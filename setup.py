@@ -21,18 +21,21 @@ with io.open('QuadQuanta/__init__.py', 'rt', encoding='utf8') as f:
     VERSION = re.search(r'__version__ = \'(.*?)\'', context).group(1)
     AUTHOR = re.search(r'__author__ = \'(.*?)\'', context).group(1)
 
+URL = "https://github.com/levonwoo/QuadQuanta"
+
 setup(
     name='QuadQuanta',  # 模块名称
     version=VERSION,
     description='To build a quantification system',  # 描述
-    packages=find_packages(exclude=[]),
+    packages=find_packages(where='.', exclude=(), include=('*', )),
     author='AUTHOR',
     author_email='',
-    license='MIT',
+    license='MIT license',
     package_data={'': ['*.*']},
-    url='#',
+    url=URL,
     include_package_data=True,
-    install_requires=parse_requirements("requirements.txt"),  # 所需的运行环境
+    install_requires=parse_requirements(
+        "./QuadQuanta/requirements.txt"),  # 所需的运行环境
     zip_safe=False,
     classifiers=[
         'Programming Language :: Python',
