@@ -1,0 +1,5 @@
+clickhouse_driver
+pandas
+numpy
+jqdatasdk
+PyYAML
