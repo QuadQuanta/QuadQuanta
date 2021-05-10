@@ -95,7 +95,8 @@ def save_all_jqdata(start_time, end_time, frequency='daily', database='jqdata'):
         create_clickhouse_database(client, database)
         client = Client(host=config.clickhouse_IP, database=database)
         start_time = start_time[:10] + ' 09:00:00'
-        end_time = end_time[:10] + ' 17:00:00'
+        end_time = end_time[:10] + ' 09:00:00'
+
         # 表不存在则创建相应表
         create_clickhouse_table(client, frequency)
         # 这种方式获取股票列表会有NAN数据，且需要转换股票代码格式
@@ -103,7 +104,9 @@ def save_all_jqdata(start_time, end_time, frequency='daily', database='jqdata'):
         code_list = stock_pd['code'].apply(
             lambda x: str(x)[:6]).unique().tolist()
 
-        # 批量处理
+        if end_time < start_time:
+            raise ValueError  # 终止日期小于开始日期
+
         try:
             # 日线级别数据保存，全部一起获取
             if frequency in ['d', 'daily', 'day']:
@@ -128,6 +131,8 @@ def save_all_jqdata(start_time, end_time, frequency='daily', database='jqdata'):
                         continue
             else:
                 raise NotImplementedError
+
+            # 分钟级别数据保存，每个股票单独保存
 
         except Exception as e:
             print('error:{}'.format(e))
@@ -167,6 +172,13 @@ def fetch_jqdata(code, start_time: str, end_time: str, client, frequency: str):
     else:
         multi_code = True
 
+    if frequency in ['d', 'day', 'daily']:
+        frequency = 'daily'
+    elif frequency in ['min', 'minute']:
+        frequency = 'minute'
+    else:
+        raise NotImplementedError
+
     # 查询最大datetime
     exist_max_datetime = query_exist_max_datetime(code, frequency, client)[0][0]
     # 数据从2014年开始保存
@@ -192,7 +204,6 @@ def fetch_jqdata(code, start_time: str, end_time: str, client, frequency: str):
                                count=None,
                                panel=False).dropna(axis=0,
                                                    how='any')  # 删除包含NAN的行
-        print(len(pd_data))
     else:
         return None
     if multi_code:
@@ -216,7 +227,7 @@ if __name__ == '__main__':
     # save_all_jqdata('2014-01-01 09:00:00',
     #                 '2021-05-08 17:00:00',
     #                 frequency='daily')
-    save_all_jqdata('2014-01-01 09:00:00',
+    save_all_jqdata('2021-05-06 09:00:00',
                     '2021-05-08 17:00:00',
-                    frequency='daily',
+                    frequency='minute',
                     database='test')
