@@ -14,7 +14,7 @@ with io.open('QuadQuanta/__init__.py', 'rt', encoding='utf8') as f:
     VERSION = re.search(r'__version__ = \'(.*?)\'', context).group(1)
     AUTHOR = re.search(r'__author__ = \'(.*?)\'', context).group(1)
 
-with open('QuadQuanta/requirements.txt') as reqs_file:
+with open('requirements.txt') as reqs_file:
     INSTALL_REQUIRES = reqs_file.readlines()
 
 URL = "https://github.com/levonwoo/QuadQuanta"

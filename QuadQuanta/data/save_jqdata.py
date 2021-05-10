@@ -16,6 +16,7 @@ import datetime
 import jqdatasdk as jq
 from clickhouse_driver import Client
 import pandas as pd
+from tqdm import tqdm
 
 from QuadQuanta.config import config
 from QuadQuanta.utils.datetime_func import date_convert_stamp, datetime_convert_stamp
@@ -121,18 +122,16 @@ def save_all_jqdata(start_time, end_time, frequency='daily', database='jqdata'):
 
             # 分钟级别数据保存，每个股票单独保存
             elif frequency in ['mim', 'minute']:
-                for code in code_list:
-                    # TODO 进度条
-                    print(code)
+                for i in tqdm(range(len(code_list))):
                     try:
                         insert_to_clickhouse(
                             pd_to_tuplelist(
-                                fetch_jqdata(code, start_time, end_time, client,
-                                             frequency), frequency), client,
-                            frequency)
+                                fetch_jqdata(code_list[i], start_time, end_time,
+                                             client, frequency), frequency),
+                            client, frequency)
                     # TODO log输出
                     except Exception as e:
-                        print('{}:error:{}'.format(code, e))
+                        print('{}:error:{}'.format(code_list[i], e))
                         continue
             else:
                 raise NotImplementedError
@@ -233,5 +232,5 @@ if __name__ == '__main__':
     #                 frequency='daily')
     save_all_jqdata('2021-05-06 09:00:00',
                     '2021-05-08 17:00:00',
-                    frequency='day',
+                    frequency='minute',
                     database='test')
