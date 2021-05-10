@@ -15,9 +15,10 @@ from collections import OrderedDict
 import datetime
 import jqdatasdk as jq
 from clickhouse_driver import Client
+import pandas as pd
 
 from QuadQuanta.config import config
-from QuadQuanta.utils.datetime_func import date_convert_stamp
+from QuadQuanta.utils.datetime_func import date_convert_stamp, datetime_convert_stamp
 from QuadQuanta.data import create_clickhouse_database, create_clickhouse_table
 from QuadQuanta.data import insert_to_clickhouse
 from QuadQuanta.data import query_exist_max_datetime
@@ -46,6 +47,9 @@ def pd_to_tuplelist(pd_data, frequency):
     NotImplementedError
         [description]
     """
+    if len(pd_data) == 0:
+        return []
+
     base_keys_list = [
         'datetime', 'code', 'open', 'close', 'high', 'low', 'volume', 'amount',
         'avg', 'high_limit', 'low_limit', 'pre_close', 'date', 'date_stamp'
@@ -95,7 +99,7 @@ def save_all_jqdata(start_time, end_time, frequency='daily', database='jqdata'):
         create_clickhouse_database(client, database)
         client = Client(host=config.clickhouse_IP, database=database)
         start_time = start_time[:10] + ' 09:00:00'
-        end_time = end_time[:10] + ' 09:00:00'
+        end_time = end_time[:10] + ' 17:00:00'
 
         # 表不存在则创建相应表
         create_clickhouse_table(client, frequency)
@@ -117,22 +121,21 @@ def save_all_jqdata(start_time, end_time, frequency='daily', database='jqdata'):
 
             # 分钟级别数据保存，每个股票单独保存
             elif frequency in ['mim', 'minute']:
-                for count, code in enumerate(code_list):
+                for code in code_list:
+                    # TODO 进度条
+                    print(code)
                     try:
-
                         insert_to_clickhouse(
                             pd_to_tuplelist(
-                                fetch_jqdata(code_list, start_time, end_time,
-                                             client, frequency), frequency),
-                            client, frequency)
-                # TODO log输出
+                                fetch_jqdata(code, start_time, end_time, client,
+                                             frequency), frequency), client,
+                            frequency)
+                    # TODO log输出
                     except Exception as e:
                         print('{}:error:{}'.format(code, e))
                         continue
             else:
                 raise NotImplementedError
-
-            # 分钟级别数据保存，每个股票单独保存
 
         except Exception as e:
             print('error:{}'.format(e))
@@ -167,10 +170,6 @@ def fetch_jqdata(code, start_time: str, end_time: str, client, frequency: str):
 
     if len(code) == 0:
         raise ValueError
-    elif len(code) == 1:
-        multi_code = False
-    else:
-        multi_code = True
 
     if frequency in ['d', 'day', 'daily']:
         frequency = 'daily'
@@ -178,6 +177,12 @@ def fetch_jqdata(code, start_time: str, end_time: str, client, frequency: str):
         frequency = 'minute'
     else:
         raise NotImplementedError
+
+    columns = [
+        'time', 'code', 'open', 'close', 'high', 'low', 'volume', 'money',
+        'avg', 'high_limit', 'low_limit', 'pre_close'
+    ]
+    empty_pd = pd.concat([pd.DataFrame({k: [] for k in columns}), None, None])
 
     # 查询最大datetime
     exist_max_datetime = query_exist_max_datetime(code, frequency, client)[0][0]
@@ -205,22 +210,21 @@ def fetch_jqdata(code, start_time: str, end_time: str, client, frequency: str):
                                panel=False).dropna(axis=0,
                                                    how='any')  # 删除包含NAN的行
     else:
-        return None
-    if multi_code:
-        pd_data['datetime'] = pd_data['time']
-        pd_data['code'] = pd_data['code']
+        return empty_pd
+    # TODO 用交易日历代替简单的日期加一
+    if len(pd_data) == 0:
+        return empty_pd
     else:
-        pd_data['datetime'] = pd_data.index
-        pd_data['code'] = code
+        pd_data['datetime'] = pd_data['time']
 
-    pd_data['amount'] = pd_data['money']
-
-    return pd_data.assign(
-        date=pd_data['datetime'].apply(lambda x: str(x)[0:10]),
-        date_stamp=pd_data['datetime'].apply(
-            lambda x: date_convert_stamp(x))).set_index('datetime',
-                                                        drop=True,
-                                                        inplace=False)
+        return pd_data.assign(
+            amount=pd_data['money'],
+            code=pd_data['code'].apply(lambda x: x[:6]),  # code列聚宽格式转为纯数字格式
+            date=pd_data['datetime'].apply(lambda x: str(x)[0:10]),
+            date_stamp=pd_data['datetime'].apply(
+                lambda x: datetime_convert_stamp(x))).set_index('datetime',
+                                                                drop=True,
+                                                                inplace=False)
 
 
 if __name__ == '__main__':
@@ -229,5 +233,5 @@ if __name__ == '__main__':
     #                 frequency='daily')
     save_all_jqdata('2021-05-06 09:00:00',
                     '2021-05-08 17:00:00',
-                    frequency='minute',
+                    frequency='day',
                     database='test')
