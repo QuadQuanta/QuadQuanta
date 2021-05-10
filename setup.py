@@ -1,4 +1,4 @@
-#-*-coding:utf-8-*-
+# -*-coding:utf-8-*-
 
 from os.path import dirname, join
 import io, re
@@ -9,17 +9,13 @@ from setuptools import (
     setup,
 )
 
-
-def parse_requirements(filename):
-    """ load requirements from a pip requirements file """
-    lineiter = (line.strip() for line in open(filename))
-    return [line for line in lineiter if line and not line.startswith("#")]
-
-
 with io.open('QuadQuanta/__init__.py', 'rt', encoding='utf8') as f:
     context = f.read()
     VERSION = re.search(r'__version__ = \'(.*?)\'', context).group(1)
     AUTHOR = re.search(r'__author__ = \'(.*?)\'', context).group(1)
+
+with open('QuadQuanta/requirements.txt') as reqs_file:
+    INSTALL_REQUIRES = reqs_file.readlines()
 
 URL = "https://github.com/levonwoo/QuadQuanta"
 
@@ -27,15 +23,14 @@ setup(
     name='QuadQuanta',  # 模块名称
     version=VERSION,
     description='To build a quantification system',  # 描述
-    packages=find_packages(where='.', exclude=(), include=('*', )),
+    packages=find_packages(where='.', exclude=(), include=('*',)),
     author='AUTHOR',
     author_email='',
     license='MIT license',
     package_data={'': ['*.*']},
     url=URL,
     include_package_data=True,
-    install_requires=parse_requirements(
-        "./QuadQuanta/requirements.txt"),  # 所需的运行环境
+    install_requires=INSTALL_REQUIRES,
     zip_safe=False,
     classifiers=[
         'Programming Language :: Python',

@@ -4,7 +4,17 @@
 
 ### 安装clickhouse
 
-### 下载源码
+参考clickhouse官网
+
+### 安装QuadQuanta
+
+```
+pip install QuadQuanta
+```
+
+### 使用示例
+
+#### 下载源码
 
 ```
 git clone
@@ -18,7 +28,7 @@ $ cd ./QuadQuanta/QuadQuanta
 
 创建`personal.yaml`配置文件，填写如下内容
 
-### 配置
+#### 配置
 
 `personal.yaml`文件
 
@@ -30,7 +40,7 @@ jqdata:
 clickhouse_server: '127.0.0.1' # clickhouse服务端地址
 ```
 
-### 更新数据
+#### 更新数据
 
 运行`./QuadQuanta/data/updata_daybar.py`即可更新从2014-01-01开始的日线数据
 
