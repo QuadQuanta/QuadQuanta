@@ -225,6 +225,7 @@ def query_clickhouse(code: list = None,
     else:
         sql = "SELECT x.* FROM %s x" % table_name
         res_tuple_list = client.execute(sql)
+    # TODO 分钟数据按年存储
 
     # TODO 判读tuple_list是否有序
     # 默认有序条件下删除res_tuple_list重复数据

@@ -6,7 +6,6 @@ __pycache__
 algoengine.iml
 *.bcolz
 *.pk
-*.h5
 .vscode
 *.so
 *.pyc

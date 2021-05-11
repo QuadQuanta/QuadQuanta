@@ -37,7 +37,7 @@ jqdata:
   username: 'yourusername' #聚宽账户
   passwd: 'yourpasswd'
 
-clickhouse_server: '127.0.0.1' # clickhouse服务端地址
+clickhouse_IP: '127.0.0.1' # clickhouse服务端地址
 ```
 
 #### 更新数据
