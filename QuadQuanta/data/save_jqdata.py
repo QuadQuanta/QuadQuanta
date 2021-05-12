@@ -210,7 +210,7 @@ def fetch_jqdata(code, start_time: str, end_time: str, client, frequency: str):
                                panel=False)
         # TODO 有没有更优雅的方式
         pd_data['pre_close'] = pd_data['pre_close'].fillna(
-            method='backfill', limit=1)  #新股上市首日没有pre_close数据，用下一行填充
+            method='backfill')  #新股上市首日分钟线没有pre_close数据，用下一行填充
         pd_data = pd_data.dropna(axis=0, how='any')  # 删除包含NAN的行
 
     else:

@@ -11,6 +11,8 @@
 '''
 
 # here put the import lib
+from QuadQuanta.portfolio.account import *
+from QuadQuanta.portfolio.position import *
 
 if __name__ == '__main__':
     pass

@@ -37,6 +37,9 @@ class Position():
         self.volume_long_frozen = volume_long_frozen
         self.last_price = 0  # 持仓最新价格
 
+    def __repr__(self) -> str:
+        return 'print position'
+
     @property
     def volume_long(self):
         """
@@ -53,7 +56,7 @@ class Position():
 
     def on_price_change(self, price):
         """
-        手动更新价格
+        更新价格
 
         Parameters
         ----------
