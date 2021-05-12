@@ -186,6 +186,7 @@ def fetch_jqdata(code, start_time: str, end_time: str, client, frequency: str):
     # 查询最大datetime
     exist_max_datetime = query_exist_max_datetime(code, frequency, client)[0][0]
     # 数据从2014年开始保存
+    # TODO 用交易日历代替简单的日期加一
     if str(exist_max_datetime) > config.start_date:  # 默认'2014-01-01'
         _start_time = str(exist_max_datetime + datetime.timedelta(hours=18))
     else:
@@ -206,11 +207,15 @@ def fetch_jqdata(code, start_time: str, end_time: str, client, frequency: str):
                                skip_paused=True,
                                fq='none',
                                count=None,
-                               panel=False).dropna(axis=0,
-                                                   how='any')  # 删除包含NAN的行
+                               panel=False)
+        # TODO 有没有更优雅的方式
+        pd_data['pre_close'] = pd_data['pre_close'].fillna(
+            method='backfill', limit=1)  #新股上市首日没有pre_close数据，用下一行填充
+        pd_data = pd_data.dropna(axis=0, how='any')  # 删除包含NAN的行
+
     else:
         return empty_pd
-    # TODO 用交易日历代替简单的日期加一
+
     if len(pd_data) == 0:
         return empty_pd
     else:
@@ -218,7 +223,7 @@ def fetch_jqdata(code, start_time: str, end_time: str, client, frequency: str):
 
         return pd_data.assign(
             amount=pd_data['money'],
-            code=pd_data['code'].apply(lambda x: x[:6]),  # code列聚宽格式转为纯数字格式
+            code=pd_data['code'].apply(lambda x: x[:6]),  # code列聚宽格式转为六位纯数字格式
             date=pd_data['datetime'].apply(lambda x: str(x)[0:10]),
             date_stamp=pd_data['datetime'].apply(
                 lambda x: datetime_convert_stamp(x))).set_index('datetime',

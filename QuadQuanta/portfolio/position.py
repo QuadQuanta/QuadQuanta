@@ -9,10 +9,11 @@
 @License :   (C)Copyright 2020-2021
 @Desc    :   股票持仓模型
 '''
+
+# here put the import lib
 import uuid
 
 
-# here put the import lib
 class Position():
     def __init__(
         self,
