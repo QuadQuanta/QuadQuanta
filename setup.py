@@ -23,8 +23,9 @@ setup(
     name='QuadQuanta',  # 模块名称
     version=VERSION,
     description='To build a quantification system',  # 描述
+    long_description='try to build a personal trading system',
     packages=find_packages(where='.', exclude=(), include=('*',)),
-    author='AUTHOR',
+    author=AUTHOR,
     author_email='',
     license='MIT license',
     package_data={'': ['*.*']},
