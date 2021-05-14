@@ -56,6 +56,13 @@ class Position():
         """
         return self.volume_long * self.last_price - self.position_cost
 
+    @property
+    def market_value(self):
+        """
+        市值
+        """
+        return self.volume_long * self.last_price
+
     def on_price_change(self, price):
         """
         更新价格
@@ -73,3 +80,18 @@ class Position():
         """
         self.volume_long_history += self.volume_long_today
         self.volume_long_today = 0
+
+    def update_pos(self, price, volume, order_direction):
+        """
+        股票更新仓位
+
+        Parameters
+        ----------
+        price : [type]
+            [description]
+        volume : [type]
+            [description]
+        order_direction : [type]
+            [description]
+        """
+        pass

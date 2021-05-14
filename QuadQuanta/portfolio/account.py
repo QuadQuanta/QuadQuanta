@@ -42,6 +42,26 @@ class Account():
     def available_cash(self):
         return self.total_cash - self.frozen_cash
 
+    @property
+    def float_profit(self):
+        return sum(
+            [position.float_profit for position in self.positions.values()])
+
+    @property
+    def total_assets(self):
+        """
+        总资产
+        """
+        return self.total_cash + self.total_market_value
+
+    @property
+    def total_market_value(self):
+        """
+        股票总市值
+        """
+        return sum(
+            [position.market_value for position in self.positions.values()])
+
     def send_order(self,
                    code,
                    volume,
@@ -173,9 +193,11 @@ class Account():
                 self.frozen_cash -= trade_amount
                 self.total_cash -= trade_amount
                 self.get_position(code).volume_long_today += trade_volume
+                self.get_position(code).position_cost += trade_amount  # 开仓成本
             elif order_direction == "sell":
                 self.get_position(code).volume_long_frozen -= trade_volume
                 self.get_position(code).volume_long_history -= trade_volume
+                self.get_position(code).position_cost -= trade_amount  # 开仓成本降低
                 self.total_cash += trade_amount
             else:
                 raise NotImplementedError
@@ -200,12 +222,16 @@ if __name__ == "__main__":
                          datetime='2020-01-10 09:33:00')
     acc.make_deal(od2)
     pos = acc.get_position()
-    print(pos)
+    pos.on_price_change(13)
+
     acc.settle()
+    print(pos)
     od3 = acc.send_order('000001',
                          100,
-                         12,
+                         14,
                          'sell',
                          datetime='2020-01-10 09:34:00')
     acc.make_deal(od3)
     print(pos)
+    print(acc.total_market_value)
+    print(acc.total_assets)
