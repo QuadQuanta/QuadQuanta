@@ -24,7 +24,7 @@ setup(
     version=VERSION,
     description='To build a quantification system',  # 描述
     long_description='try to build a personal trading system',
-    packages=find_packages(where='.', exclude=(), include=('*',)),
+    packages=find_packages(where='.', exclude=(), include=('*', )),
     author=AUTHOR,
     author_email='',
     license='MIT license',

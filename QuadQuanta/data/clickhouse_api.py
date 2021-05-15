@@ -12,6 +12,7 @@
 
 # here put the import lib
 import numpy as np
+import time
 from clickhouse_driver import Client
 
 from QuadQuanta.config import config
@@ -189,6 +190,13 @@ def query_clickhouse(code: list = None,
         # TODO 判断code是否有效
         if isinstance(code, str):
             code = list(map(str.strip, code.split(',')))
+    # TODO 判断日期合法
+    if start_time and end_time:
+        try:
+            time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+        except:
+            start_time = start_time + ' 09:00:00'
+            end_time = end_time + ' 17:00:00'
 
     if frequency in ['day', 'daily', 'd']:
         table_name = 'stock_day'
@@ -225,7 +233,7 @@ def query_clickhouse(code: list = None,
     else:
         sql = "SELECT x.* FROM %s x" % table_name
         res_tuple_list = client.execute(sql)
-    # TODO 分钟数据按年存储
+    #  TODO clickhouse分片
 
     # TODO 判读tuple_list是否有序
     # 默认有序条件下删除res_tuple_list重复数据
