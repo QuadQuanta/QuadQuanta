@@ -4,20 +4,44 @@
 
 ### 安装clickhouse
 
-参考clickhouse官网
+参考clickhouse官网，暂时未设置用户名，密码认证
 
 ### 安装QuadQuanta
+
+#### pip 安装
 
 ```
 pip install QuadQuanta
 ```
+
+#### 源码安装最新版
+
+下载最新源码
+
+```
+git clone https://github.com/levonwoo/QuadQuanta.git
+```
+
+进入项目根目录
+
+```
+cd ./QuadQuanta
+```
+
+安装
+
+```
+python -m pip install -e .
+```
+
+
 
 ### 使用示例
 
 #### 下载源码
 
 ```
-git clone
+git clone https://github.com/levonwoo/QuadQuanta.git
 ```
 
 进入文件夹
