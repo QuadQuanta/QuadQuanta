@@ -14,6 +14,7 @@
 import numpy as np
 import time
 from clickhouse_driver import Client
+import asyncio
 
 from QuadQuanta.config import config
 from QuadQuanta.utils.common import removeDuplicates
@@ -190,13 +191,20 @@ def query_clickhouse(code: list = None,
         # TODO 判断code是否有效
         if isinstance(code, str):
             code = list(map(str.strip, code.split(',')))
-    # TODO 判断日期合法
     if start_time and end_time:
         try:
             time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-        except:
+        except ValueError:
             start_time = start_time + ' 09:00:00'
             end_time = end_time + ' 17:00:00'
+        #  判断日期合法
+        try:
+            time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+            if start_time > end_time:
+                raise ValueError
+        except ValueError:
+            print("输入日期不合法或开始时间大于结束时间")
 
     if frequency in ['day', 'daily', 'd']:
         table_name = 'stock_day'
