@@ -251,6 +251,94 @@ def query_clickhouse(code: list = None,
     return tuplelist_to_np(res_tuple_list, table_name)
 
 
+async def asynquery_clickhouse(code: list = None,
+                               start_time: str = None,
+                               end_time: str = None,
+                               frequency='daily',
+                               database='jqdata') -> np.ndarray:
+    """
+    异步查询
+
+    Parameters
+    ----------
+    code : list, optional
+        [description], by default None
+    start_time : str, optional
+        [description], by default None
+    end_time : str, optional
+        [description], by default None
+    frequency : str, optional
+        [description], by default 'daily'
+    database : str, optional
+        数据库名，默认为聚宽数据, by default 'jqdata'
+
+    Returns
+    -------
+    np.ndarray
+        [description]
+
+    Raises
+    ------
+    NotImplementedError
+        [description]
+    NotImplementedError
+        [description]
+    """
+    if code:
+        if isinstance(code, str):
+            code = list(map(str.strip, code.split(',')))
+    if start_time and end_time:
+        try:
+            time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+        except:
+            start_time = start_time + ' 09:00:00'
+            end_time = end_time + ' 17:00:00'
+
+    if frequency in ['day', 'daily', 'd']:
+        table_name = 'stock_day'
+    elif frequency in ['min', 'minute', '1min']:
+        table_name = 'stock_min'
+    else:
+        raise NotImplementedError
+
+    client = Client(host=config.clickhouse_IP, database=database)
+    create_clickhouse_table(client, frequency)
+
+    if start_time and end_time and code:
+        sql = "SELECT x.* FROM %s x" % table_name + " WHERE `datetime` >= %(start_time)s \
+                        AND `datetime` <= %(end_time)s AND `code` IN %(code)s ORDER BY (`datetime`, `code`)"
+
+        res_tuple_list = client.execute(sql, {
+            'start_time': start_time,
+            'end_time': end_time,
+            'code': code
+        })
+    elif start_time and end_time:
+        sql = "SELECT x.* FROM %s x" % table_name + " WHERE `datetime` >= %(start_time)s \
+                        AND `datetime` <= %(end_time)s ORDER BY (`datetime`, `code`)"
+
+        res_tuple_list = client.execute(sql, {
+            'start_time': start_time,
+            'end_time': end_time
+        })
+    elif code:
+
+        sql = "SELECT x.* FROM %s x" % table_name + " WHERE `code` IN %(code)s ORDER BY (`datetime`, `code`)"
+        res_tuple_list = client.execute(sql, {'code': code})
+    else:
+        sql = "SELECT x.* FROM %s x" % table_name
+        res_tuple_list = client.execute(sql)
+
+    res_tuple_list = removeDuplicates(res_tuple_list)
+
+    return tuplelist_to_np(res_tuple_list, table_name)
+
+
 if __name__ == '__main__':
-    client = Client(host=config.clickhouse_IP)
-    create_clickhouse_database(client, 'test')
+    # client = Client(host=config.clickhouse_IP)
+    # create_clickhouse_database(client, 'test')
+    loop = asyncio.get_event_loop()
+    task1 = asynquery_clickhouse('000001', '2014-01-02', '2014-01-02', 'min')
+    task = loop.create_task(task1)
+    loop.run_until_complete(task)
+    print(len(task.result()))

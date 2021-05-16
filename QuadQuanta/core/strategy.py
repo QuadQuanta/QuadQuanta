@@ -16,7 +16,7 @@ import numpy as np
 from QuadQuanta.data import query_clickhouse
 
 
-class Strategy():
+class BaseStrategy():
     """
     策略基类
     """
@@ -33,7 +33,6 @@ class Strategy():
         self.subscribe_code = np.unique(self.day_data['code']).tolist()
         self.trading_date = np.sort(np.unique(self.day_data['date']))
         self.trading_datetime = np.sort(np.unique(self.day_data['datetime']))
-        self.count = 0
 
     def init(self):
         """
@@ -45,32 +44,41 @@ class Strategy():
         """
         
         """
-        if bar['close'] >10:
-            self.count +=1
+        raise NotImplementedError
 
     def on_tick(self, tick):
         raise NotImplementedError
 
-    def run_backtest(self):
+    def syn_backtest(self):
+        for date in self.trading_date:
+            if self.frequency in ['d', 'day']:
+                self.subscribe_data = self.day_data[self.day_data['date'] ==
+                                                    date]
+            else:
+                self.subscribe_data = query_clickhouse(self.subscribe_code,
+                                                       str(date), str(date),
+                                                       self.frequency)
+            for sigle_bar in self.subscribe_data:
+                self.on_bar(sigle_bar)
+
+    # TODO
+    async def asyn_backtest(self):
+        """
+        异步回测
+        """
+
         import time
 
         for date in self.trading_date:
             _start = time.time()
-            if self.frequency in ['d','day']:
-                self.subscribe_data = self.day_data[self.day_data['date']==date]
-            else:
-                self.subscribe_data = query_clickhouse(self.subscribe_code, str(date),
-                                                       str(date), self.frequency)
-            print(time.time() - _start)
-            _start = time.time()
-            for sigle_bar in self.subscribe_data:
-                self.on_bar(sigle_bar)
 
-
+            self.subscribe_data = query_clickhouse(self.subscribe_code,
+                                                   str(date), str(date),
+                                                   self.frequency)
 
 
 if __name__ == '__main__':
-    strategy = Strategy(start_date='2014-01-01',
-                        end_date='2015-01-10',
-                        frequency='min')
-    strategy.run_backtest()
+    strategy = BaseStrategy(start_date='2014-01-01',
+                            end_date='2015-01-10',
+                            frequency='min')
+    strategy.syn_backtest()
