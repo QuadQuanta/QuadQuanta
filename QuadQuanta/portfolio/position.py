@@ -38,9 +38,9 @@ class Position():
         self.last_price = 0  # 持仓最新价格
 
     def __repr__(self) -> str:
-        return 'Positon: {} volume: {} avaliable:{} float_profit:{}'.format(
+        return 'Positon: {} volume: {} avaliable:{} cost_price:{} mark_value:{} float_profit:{}'.format(
             self.code, self.volume_long, self.volume_long_history,
-            self.float_profit)
+            self.cost_price, self.market_value, self.float_profit)
 
     @property
     def volume_long(self):
@@ -48,6 +48,18 @@ class Position():
         实际持仓
         """
         return self.volume_long_today + self.volume_long_history - self.volume_long_frozen
+
+    @property
+    def cost_price(self):
+        """
+        持仓成本价
+
+        Returns
+        -------
+        [type]
+            [description]
+        """
+        return round(self.position_cost / self.volume_long, 2)
 
     @property
     def float_profit(self):
