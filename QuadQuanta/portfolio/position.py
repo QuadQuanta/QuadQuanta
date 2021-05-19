@@ -33,9 +33,15 @@ class Position():
 
         self.volume_long_today = volume_long_today
         self.volume_long_history = volume_long_history
+        self.volume_short_today = 0
+        self.volume_short_history = 0
         self.position_cost = position_cost
-        self.volume_long_frozen = volume_long_frozen
+        # 卖出冻结
+        self.volume_short_frozen = 0
+        self.frozen_cash = 0
         self.last_price = 0  # 持仓最新价格
+        # 开仓总成本
+        self.open_cost = 0
 
     def __repr__(self) -> str:
         return 'Positon: {} volume: {} avaliable:{} cost_price:{} mark_value:{} float_profit:{}'.format(
@@ -47,7 +53,7 @@ class Position():
         """
         实际持仓
         """
-        return self.volume_long_today + self.volume_long_history - self.volume_long_frozen
+        return self.volume_long_today + self.volume_long_history + self.volume_short_frozen
 
     @property
     def cost_price(self):
@@ -59,14 +65,29 @@ class Position():
         [type]
             [description]
         """
-        return round(self.position_cost / self.volume_long, 2)
+        try:
+            return round(self.position_cost / self.volume_long, 2)
+        except ZeroDivisionError:
+            return 0
 
     @property
     def float_profit(self):
         """
-        浮动盈亏
+        浮动盈亏金额
         """
         return self.volume_long * self.last_price - self.position_cost
+
+    @property
+    def profit_ratio(self):
+        """
+        收益率
+
+        Returns
+        -------
+        [type]
+            [description]
+        """
+        return round(100 * (self.float_profit / self.open_cost), 2)
 
     @property
     def market_value(self):
@@ -91,7 +112,9 @@ class Position():
         收盘后结算
         """
         self.volume_long_history += self.volume_long_today
+        self.volume_long_history += self.volume_short_today
         self.volume_long_today = 0
+        self.volume_short_today = 0
 
     def update_pos(self, price, volume, order_direction):
         """
@@ -106,4 +129,5 @@ class Position():
         order_direction : [type]
             [description]
         """
-        pass
+        self.on_price_change(price)
+        temp_cost = int(volume)*price

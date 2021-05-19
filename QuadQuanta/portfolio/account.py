@@ -19,19 +19,19 @@ from QuadQuanta.portfolio.position import Position
 class Account():
     """[summary]
     """
-    def __init__(
-        self,
-        username=None,
-        passwd=None,
-        model='backtest',
-        total_cash=100000,
-    ):
 
+    def __init__(
+            self,
+            username=None,
+            passwd=None,
+            model='backtest',
+            init_cash=100000,
+    ):
+        self.init_cash = init_cash
         self.username = username
         self.passwd = passwd
         self.model = model
-        self.total_cash = total_cash
-        self.frozen_cash = 0
+        self.available_cash = init_cash
         self.orders = {}
         self.positions = {}
 
@@ -39,13 +39,22 @@ class Account():
         return 'print account'
 
     @property
-    def available_cash(self):
-        return self.total_cash - self.frozen_cash
+    def total_cash(self):
+        return self.available_cash + self.frozen_cash
+
+    @property
+    def frozen_cash(self):
+        return sum([position.frozen_cash for position in self.positions.values()])
 
     @property
     def float_profit(self):
         return sum(
             [position.float_profit for position in self.positions.values()])
+
+    @property
+    def profit_ratio(self):
+        return round(
+            100 * (self.total_assets - self.init_cash) / self.init_cash, 2)
 
     @property
     def total_assets(self):
@@ -101,7 +110,8 @@ class Account():
 
     def order_check(self, code, volume, price, order_direction):
         """
-        订单预处理, 账户逻辑，卖出数量小于可卖出数量，买入数量对应的金额小于资金余额，买入价格
+        订单预处理, 账户逻辑，卖出数量小于可卖出数量，
+        买入数量对应的金额小于资金余额，买入价格
 
         Parameters
         ----------
@@ -117,13 +127,18 @@ class Account():
         """
         res = False
         pos = self.get_position(code)
+        pos.on_price_change(price)
         if order_direction == 'buy':
             if self.available_cash >= volume * price:  # 可用资金大于买入需要资金
-                self.frozen_cash += volume * price  # 冻结资金
+                pos.frozen_cash += volume * price
+                # 可用现金减少
+                self.available_cash -= volume * price
                 res = True
         elif order_direction == 'sell':
             if pos.volume_long_history >= volume:  # 可卖数量大于卖出数量
-                pos.volume_long_frozen += volume
+                # 历史持仓减少，冻结持仓增加
+                pos.volume_long_history -= volume
+                pos.volume_short_frozen += volume
                 res = True
         else:
             raise NotImplementedError
@@ -184,21 +199,29 @@ class Account():
                      order_direction,
                      order_id=None,
                      trade_id=None):
+        pos = self.get_position(code)
+        pos.on_price_change(trade_price)
         if order_id in self.orders.keys():
             #
             order = self.orders[order_id]
             # 默认全部成交
             # 买入/卖出逻辑
             if order_direction == "buy":
-                self.frozen_cash -= trade_amount
-                self.total_cash -= trade_amount
-                self.get_position(code).volume_long_today += trade_volume
-                self.get_position(code).position_cost += trade_amount  # 开仓成本
+                # 冻结资金转换为持仓
+                pos.frozen_cash -= trade_amount
+                pos.volume_long_today += trade_volume
+                # 成本增加
+                pos.position_cost += trade_amount
+                pos.open_cost += trade_amount
             elif order_direction == "sell":
-                self.get_position(code).volume_long_frozen -= trade_volume
-                self.get_position(code).volume_long_history -= trade_volume
-                self.get_position(code).position_cost -= trade_amount  # 开仓成本降低
-                self.total_cash += trade_amount
+                # 冻结持仓转换为可用资金
+                pos.volume_short_frozen -= trade_volume
+                pos.volume_long_history -= trade_volume
+                pos.volume_short_today += trade_volume
+                self.available_cash += trade_amount
+
+                # 成本减少
+                pos.position_cost -= trade_amount
             else:
                 raise NotImplementedError
 
