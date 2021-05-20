@@ -95,51 +95,45 @@ def save_all_jqdata(start_time, end_time, frequency='daily', database='jqdata'):
     """
     jq.auth(config.jqusername, config.jqpasswd)
     # 强制转换start_time, end_time时间改为9:00:00和17:00
-    try:
-        client = Client(host=config.clickhouse_IP)
-        create_clickhouse_database(client, database)
-        client = Client(host=config.clickhouse_IP, database=database)
-        start_time = start_time[:10] + ' 09:00:00'
-        end_time = end_time[:10] + ' 17:00:00'
+    client = Client(host=config.clickhouse_IP)
+    create_clickhouse_database(client, database)
+    client = Client(host=config.clickhouse_IP, database=database)
+    start_time = start_time[:10] + ' 09:00:00'
+    end_time = end_time[:10] + ' 17:00:00'
 
-        # 表不存在则创建相应表
-        create_clickhouse_table(client, frequency)
-        # 这种方式获取股票列表会有NAN数据，且需要转换股票代码格式
-        stock_pd = jq.get_all_securities().assign(code=lambda x: x.index)
-        code_list = stock_pd['code'].apply(
-            lambda x: str(x)[:6]).unique().tolist()
+    # 表不存在则创建相应表
+    create_clickhouse_table(client, frequency)
+    # 这种方式获取股票列表会有NAN数据，且需要转换股票代码格式
+    stock_pd = jq.get_all_securities().assign(code=lambda x: x.index)
+    code_list = stock_pd['code'].apply(
+        lambda x: str(x)[:6]).unique().tolist()
 
-        if end_time < start_time:
-            raise ValueError  # 终止日期小于开始日期
+    if end_time < start_time:
+        raise ValueError  # 终止日期小于开始日期
 
-        try:
-            # 日线级别数据保存，全部一起获取
-            if frequency in ['d', 'daily', 'day']:
+    # 日线级别数据保存，全部一起获取
+    if frequency in ['d', 'daily', 'day']:
+        insert_to_clickhouse(
+            pd_to_tuplelist(
+                fetch_jqdata(code_list, start_time, end_time, client,
+                             frequency), frequency), client, frequency)
+
+    # 分钟级别数据保存，每个股票单独保存
+    elif frequency in ['mim', 'minute']:
+        for i in tqdm(range(len(code_list))):
+            try:
                 insert_to_clickhouse(
                     pd_to_tuplelist(
-                        fetch_jqdata(code_list, start_time, end_time, client,
-                                     frequency), frequency), client, frequency)
-
-            # 分钟级别数据保存，每个股票单独保存
-            elif frequency in ['mim', 'minute']:
-                for i in tqdm(range(len(code_list))):
-                    try:
-                        insert_to_clickhouse(
-                            pd_to_tuplelist(
-                                fetch_jqdata(code_list[i], start_time, end_time,
-                                             client, frequency), frequency),
-                            client, frequency)
-                    # TODO log输出
-                    except Exception as e:
-                        print('{}:error:{}'.format(code_list[i], e))
-                        continue
-            else:
-                raise NotImplementedError
-
-        except Exception as e:
-            print('error:{}'.format(e))
-    except Exception as e:
-        pass
+                        fetch_jqdata(code_list[i], start_time, end_time,
+                                     client, frequency), frequency),
+                    client, frequency)
+            # TODO log输出
+            except Exception as e:
+                print('{}:error:{}'.format(code_list[i], e))
+                raise Exception('Insert min data error',code_list[i] )
+                continue
+    else:
+        raise NotImplementedError
 
 
 def fetch_jqdata(code, start_time: str, end_time: str, client, frequency: str):

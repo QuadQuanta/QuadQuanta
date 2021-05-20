@@ -34,6 +34,10 @@ class Account():
         self.available_cash = init_cash
         self.orders = {}
         self.positions = {}
+        # 印花税
+        self.stamp_duty = 0.001
+        # 手续费
+        self.handle_fee = 0.0001
 
     def __repr__(self) -> str:
         return 'print account'
@@ -94,19 +98,11 @@ class Account():
             下单时间
         """
         order_id = str(uuid.uuid4()) if order_id == None else order_id
-        if self.order_check(code, volume, price, order_direction):
-            order = {
-                'order_time': datetime,  # 下单时间
-                'instrument_id': code,
-                'price': price,
-                'volume': volume,
-                'amount': price * volume,  # 需要的资金
-                'direction': order_direction,
-                'order_id': order_id,
-                'last_msg': "已报",
-            }
-            self.orders[order_id] = order
-            return order
+        checked_order = self.order_check(code, volume, price, order_direction)
+        checked_order['order_time'] = datetime
+        checked_order['order_id'] = order_id
+        self.orders[order_id] = checked_order
+        return checked_order
 
     def order_check(self, code, volume, price, order_direction):
         """
@@ -125,25 +121,50 @@ class Account():
             [description]
 
         """
-        res = False
         pos = self.get_position(code)
         pos.on_price_change(price)
         if order_direction == 'buy':
             if self.available_cash >= volume * price:  # 可用资金大于买入需要资金
-                pos.frozen_cash += volume * price
-                # 可用现金减少
-                self.available_cash -= volume * price
-                res = True
+                volume = volume
+            else:
+                volume = 100 * self.available_cash // (100 * price)
+            amount = volume * price * (1 + self.handle_fee)
+            pos.frozen_cash += amount
+            # 可用现金减少
+            self.available_cash -= amount
+            order = {
+                'instrument_id': code,
+                'price': price,
+                'volume': volume,
+                'amount': amount,  # 需要的资金
+                'direction': order_direction,
+                'last_msg': "已报",
+            }
+
         elif order_direction == 'sell':
             if pos.volume_long_history >= volume:  # 可卖数量大于卖出数量
-                # 历史持仓减少，冻结持仓增加
-                pos.volume_long_history -= volume
-                pos.volume_short_frozen += volume
-                res = True
+                volume = volume
+            else:
+                volume = pos.volume_long_history
+
+            amount = volume * price * (1 - self.handle_fee - self.stamp_duty)
+            # 历史持仓减少，冻结持仓增加
+            pos.volume_long_history -= volume
+            pos.volume_short_frozen += volume
+
+            order = {
+                'instrument_id': code,
+                'price': price,
+                'volume': volume,
+                'amount': amount,
+                'direction': order_direction,
+                'last_msg': "已报",
+            }
+
         else:
             raise NotImplementedError
 
-        return res
+        return order
 
     def cancel_order(self, order_id):
         """
