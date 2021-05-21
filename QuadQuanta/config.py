@@ -1,21 +1,23 @@
 import yaml
+import sys
 import os
-
-current_path = os.path.abspath(os.path.dirname(__file__))
-
-global jqusername, jqpasswd, clickhouse_server, start_date
 
 
 class Config():
-    @staticmethod
-    def load_personal_yaml():
-        with open(current_path + '/personal.yaml', 'r') as f:
-            return yaml.safe_load(f.read())
+    def __init__(self):
+        config_dirs = os.path.expanduser('~') + '/.QuadQuanta/'
+        if not os.path.exists(config_dirs):
+            os.makedirs(config_dirs)
+        self.path = config_dirs
 
-    @staticmethod
-    def load_config_yaml():
-        with open(current_path + '/config.yaml', 'r') as f:
-            return yaml.safe_load(f.read())
+    def load_config_yaml(self):
+        try:
+            with open(self.path + 'config.yaml', 'r') as f:
+                return yaml.safe_load(f.read())
+        except:
+            with open(self.path + 'config.yaml', 'a+') as f:
+                print(f"创建配置文件成功, 请配置后运行")
+                sys.exit()
 
     @property
     def jqusername(self):
@@ -33,24 +35,20 @@ class Config():
     def start_date(self):
         return self.get_start_date()
 
-    @classmethod
-    def get_jqusername(cls):
-        yaml_data = cls.load_personal_yaml()
+    def get_jqusername(self):
+        yaml_data = self.load_config_yaml()
         return yaml_data['jqdata']['username']
 
-    @classmethod
-    def get_jqpasswd(cls):
-        yaml_data = cls.load_personal_yaml()
+    def get_jqpasswd(self):
+        yaml_data = self.load_config_yaml()
         return yaml_data['jqdata']['passwd']
 
-    @classmethod
-    def get_clickhouse_ip(cls):
-        yaml_data = cls.load_personal_yaml()
+    def get_clickhouse_ip(self):
+        yaml_data = self.load_config_yaml()
         return yaml_data['clickhouse_IP']
 
-    @classmethod
-    def get_start_date(cls):
-        yaml_data = cls.load_config_yaml()
+    def get_start_date(self):
+        yaml_data = self.load_config_yaml()
         return yaml_data['start_date']
 
 
