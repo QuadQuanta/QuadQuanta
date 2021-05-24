@@ -1,9 +1,10 @@
 # 基于聚宽数据源的本地clickhouse存储方案
 
-**测试阶段BUG多，勿用于生成环境***
+**测试阶段BUG多，勿用于生成环境**
 
 - [x] 日线
 - [x] 1分钟线
+- [ ] 复权
 
 
 ## 简明使用教程
@@ -40,8 +41,6 @@ cd ./QuadQuanta
 python -m pip install -e .
 ```
 
-
-
 ### 使用示例
 
 #### 下载源码
@@ -50,35 +49,28 @@ python -m pip install -e .
 git clone https://github.com/levonwoo/QuadQuanta.git
 ```
 
-进入文件夹
-
-```
-$ cd ./QuadQuanta/QuadQuanta
-```
-
-创建`personal.yaml`配置文件，填写如下内容
-
-#### 配置
-
-`personal.yaml`文件
-
-```
-jqdata:
-  username: 'yourusername' #聚宽账户
-  passwd: 'yourpasswd'
-
-clickhouse_IP: '127.0.0.1' # clickhouse服务端地址
-```
-
 #### 更新数据
 
 运行`./QuadQuanta/data/updata_daybar.py`即可更新从2014-01-01开始的日线数据
+
+首次会自动在用户目录创建`~/.QuadQuanta/config.yaml`文件，需要配置`config.yaml`文件后运行，以下是config.yaml文件示例
+
+```yaml
+# 数据下载开始日期
+start_date: '2014-01-01'
+#聚宽账户
+jqdata:
+  username: 'yourusername' 
+  passwd: 'yourpasswd'
+# clickhouse服务端地址
+clickhouse_IP: '127.0.0.1'
+```
 
 修改`config.yaml`文件`start_date`项可修改开始时间，参考聚宽数据源的最早数据时间
 
 #### 示例
 
-`./QuadQuanta/data/example.py`文件为一个简易的选股示例
+`./QuadQuanta/examples/stock_picking.py`文件为一个简易的选股示例
 
 ### 数据字段
 

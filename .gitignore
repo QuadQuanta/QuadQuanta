@@ -15,7 +15,6 @@ persist/
 .tox
 .tmp.pkl
 .env
-personal.yaml
 history*
 strategy/
 *.egg-info/
