@@ -12,8 +12,9 @@
 
 # here put the import lib
 import datetime
-from QuadQuanta.data import save_all_jqdata
+
 from QuadQuanta.config import config
+from QuadQuanta.data import save_all_jqdata
 
 if __name__ == '__main__':
     today = datetime.date.today()

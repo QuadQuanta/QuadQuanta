@@ -10,12 +10,12 @@
 @Desc    :   None
 '''
 
+import asyncio
+import time
+
 # here put the import lib
 import numpy as np
-import time
 from clickhouse_driver import Client
-import asyncio
-
 from QuadQuanta.config import config
 from QuadQuanta.utils.common import removeDuplicates
 

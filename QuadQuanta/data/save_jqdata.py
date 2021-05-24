@@ -10,20 +10,21 @@
 @Desc    :   None
 '''
 
-# here put the import lib
-from collections import OrderedDict
 import datetime
 import time
-import jqdatasdk as jq
-from clickhouse_driver import Client
-import pandas as pd
-from tqdm import tqdm
+# here put the import lib
+from collections import OrderedDict
 
+import jqdatasdk as jq
+import pandas as pd
+from clickhouse_driver import Client
 from QuadQuanta.config import config
-from QuadQuanta.utils.datetime_func import date_convert_stamp, datetime_convert_stamp
-from QuadQuanta.data import create_clickhouse_database, create_clickhouse_table
-from QuadQuanta.data import insert_to_clickhouse
-from QuadQuanta.data import query_exist_max_datetime
+from QuadQuanta.data import (create_clickhouse_database,
+                             create_clickhouse_table, insert_to_clickhouse,
+                             query_exist_max_datetime)
+from QuadQuanta.utils.datetime_func import (date_convert_stamp,
+                                            datetime_convert_stamp)
+from tqdm import tqdm
 
 
 def pd_to_tuplelist(pd_data, frequency):

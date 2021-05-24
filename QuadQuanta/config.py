@@ -1,6 +1,7 @@
-import yaml
-import sys
 import os
+import sys
+
+import yaml
 
 
 class Config():
