@@ -13,6 +13,7 @@
 # here put the import lib
 from collections import OrderedDict
 import datetime
+import time
 import jqdatasdk as jq
 from clickhouse_driver import Client
 import pandas as pd
@@ -98,15 +99,20 @@ def save_all_jqdata(start_time, end_time, frequency='daily', database='jqdata'):
     client = Client(host=config.clickhouse_IP)
     create_clickhouse_database(client, database)
     client = Client(host=config.clickhouse_IP, database=database)
+
     start_time = start_time[:10] + ' 09:00:00'
+    current_hour = datetime.datetime.now().hour
+    today = datetime.datetime.today()
+    # 交易日收盘前更新,只更新到昨日数据
+    if current_hour < 16 and str(today)[:10] <= end_time[:10]:
+        end_time = str(today - datetime.timedelta(1))[:10]
     end_time = end_time[:10] + ' 17:00:00'
 
     # 表不存在则创建相应表
     create_clickhouse_table(client, frequency)
     # 这种方式获取股票列表会有NAN数据，且需要转换股票代码格式
     stock_pd = jq.get_all_securities().assign(code=lambda x: x.index)
-    code_list = stock_pd['code'].apply(
-        lambda x: str(x)[:6]).unique().tolist()
+    code_list = stock_pd['code'].apply(lambda x: str(x)[:6]).unique().tolist()
 
     if end_time < start_time:
         raise ValueError  # 终止日期小于开始日期
@@ -124,13 +130,12 @@ def save_all_jqdata(start_time, end_time, frequency='daily', database='jqdata'):
             try:
                 insert_to_clickhouse(
                     pd_to_tuplelist(
-                        fetch_jqdata(code_list[i], start_time, end_time,
-                                     client, frequency), frequency),
-                    client, frequency)
+                        fetch_jqdata(code_list[i], start_time, end_time, client,
+                                     frequency), frequency), client, frequency)
             # TODO log输出
             except Exception as e:
                 print('{}:error:{}'.format(code_list[i], e))
-                raise Exception('Insert min data error',code_list[i] )
+                raise Exception('Insert min data error', code_list[i])
                 continue
     else:
         raise NotImplementedError
@@ -229,7 +234,7 @@ if __name__ == '__main__':
     # save_all_jqdata('2014-01-01 09:00:00',
     #                 '2021-05-08 17:00:00',
     #                 frequency='daily')
-    save_all_jqdata('2021-05-06 09:00:00',
-                    '2021-05-08 17:00:00',
-                    frequency='minute',
+    save_all_jqdata('2021-05-21 09:00:00',
+                    '2021-05-24 17:00:00',
+                    frequency='daily',
                     database='test')
