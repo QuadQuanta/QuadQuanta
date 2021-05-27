@@ -24,7 +24,7 @@ setup(
     version=VERSION,
     description='To build a quantification system',  # 描述
     long_description='try to build a personal trading system',
-    packages=find_packages(where='.', exclude=(), include=('*', )),
+    packages=find_packages(where='.', exclude=(["QuadQuanta.strategy"]), include=('*', )),
     author=AUTHOR,
     author_email='',
     license='MIT license',
@@ -32,6 +32,7 @@ setup(
     url=URL,
     include_package_data=True,
     install_requires=INSTALL_REQUIRES,
+    exclude_package_data={},
     zip_safe=False,
     classifiers=[
         'Programming Language :: Python',

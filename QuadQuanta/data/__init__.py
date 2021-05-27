@@ -12,5 +12,5 @@
 
 # here put the import lib
 from QuadQuanta.data.clickhouse_api import *
-from QuadQuanta.data.save_jqdata import *
+from QuadQuanta.data.save_data import *
 from QuadQuanta.data.updata_data import *

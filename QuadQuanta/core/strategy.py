@@ -12,8 +12,8 @@
 
 # here put the import lib
 import numpy as np
-
 from QuadQuanta.data import query_clickhouse
+from tqdm import tqdm
 
 
 class BaseStrategy():
@@ -33,10 +33,11 @@ class BaseStrategy():
         self.subscribe_code = np.unique(self.day_data['code']).tolist()
         self.trading_date = np.sort(np.unique(self.day_data['date']))
         self.trading_datetime = np.sort(np.unique(self.day_data['datetime']))
+        self.init()
 
     def init(self):
         """
-        策略初始化
+        策略初始化函数, 初始化回测账户,手续费
         """
         raise NotImplementedError
 
@@ -50,35 +51,30 @@ class BaseStrategy():
         raise NotImplementedError
 
     def syn_backtest(self):
-        for date in self.trading_date:
-            if self.frequency in ['d', 'day']:
-                self.subscribe_data = self.day_data[self.day_data['date'] ==
-                                                    date]
-            else:
-                self.subscribe_data = query_clickhouse(self.subscribe_code,
-                                                       str(date), str(date),
-                                                       self.frequency)
-            for sigle_bar in self.subscribe_data:
-                self.on_bar(sigle_bar)
+        """
+        日线回测逻辑
+
+        """
+        for i in tqdm(range(0, len(self.trading_date) - 1)):
+            date = self.trading_date[i]
+            self.today_data = self.day_data[self.day_data['date'] == date]
+            try:
+                for bar in self.today_data:
+                    self.on_bar(bar)
+            except Exception as e:
+                print(e)
+                continue
 
     # TODO
     async def asyn_backtest(self):
         """
         异步回测
         """
-
-        import time
-
-        for date in self.trading_date:
-            _start = time.time()
-
-            self.subscribe_data = query_clickhouse(self.subscribe_code,
-                                                   str(date), str(date),
-                                                   self.frequency)
+        raise NotImplementedError
 
 
 if __name__ == '__main__':
     strategy = BaseStrategy(start_date='2014-01-01',
-                            end_date='2015-01-10',
+                            end_date='2014-01-10',
                             frequency='min')
     strategy.syn_backtest()
