@@ -57,7 +57,13 @@ def pd_to_tuplelist(pd_data, frequency):
         'datetime', 'code', 'open', 'close', 'high', 'low', 'volume', 'amount',
         'avg', 'high_limit', 'low_limit', 'pre_close', 'date', 'date_stamp'
     ]
+    if frequency in ['auction', 'call_auction']:
+        base_keys_list = [
+            'datetime', 'code', 'close', 'volume', 'amount', 'date',
+            'date_stamp'
+        ]
     rawdata = OrderedDict().fromkeys(base_keys_list)
+
     if frequency in ['min', 'minute', '1min']:
         rawdata['datetime'] = list(
             map(
@@ -71,6 +77,12 @@ def pd_to_tuplelist(pd_data, frequency):
                 lambda x: datetime.datetime.utcfromtimestamp(
                     x.astype(datetime.datetime) / pow(10, 9)) + datetime.
                 timedelta(hours=15), pd_data.index.values))
+    elif frequency in ['auction', 'call_auction']:
+        rawdata['datetime'] = list(
+            map(
+                lambda x: datetime.datetime.utcfromtimestamp(
+                    x.astype(datetime.datetime) / pow(10, 9)),
+                pd_data.index.values))
     else:
         raise NotImplementedError
 
@@ -82,7 +94,10 @@ def pd_to_tuplelist(pd_data, frequency):
     return list(map(tuple, zip(*list(rawdata.values()))))
 
 
-def save_all_jqdata(start_time, end_time, frequency='daily', database='jqdata'):
+def save_bars(start_time='2014-01-01',
+              end_time='2014-01-10',
+              frequency='daily',
+              database='jqdata'):
     """
     保存起始时间内所有聚宽股票数据到clickhouse
 
@@ -122,8 +137,8 @@ def save_all_jqdata(start_time, end_time, frequency='daily', database='jqdata'):
     if frequency in ['d', 'daily', 'day']:
         insert_to_clickhouse(
             pd_to_tuplelist(
-                fetch_jqdata(code_list, start_time, end_time, client,
-                             frequency), frequency), client, frequency)
+                get_jq_bars(code_list, start_time, end_time, client, frequency),
+                frequency), client, frequency)
 
     # 分钟级别数据保存，每个股票单独保存
     elif frequency in ['mim', 'minute']:
@@ -131,18 +146,34 @@ def save_all_jqdata(start_time, end_time, frequency='daily', database='jqdata'):
             try:
                 insert_to_clickhouse(
                     pd_to_tuplelist(
-                        fetch_jqdata(code_list[i], start_time, end_time, client,
-                                     frequency), frequency), client, frequency)
+                        get_jq_bars(code_list[i], start_time, end_time, client,
+                                    frequency), frequency), client, frequency)
             # TODO log输出
             except Exception as e:
                 print('{}:error:{}'.format(code_list[i], e))
                 raise Exception('Insert min data error', code_list[i])
                 continue
+
+    # 竞价数据，按日期保存
+    elif frequency in ['auction', 'call_auction']:
+        date_range = pd.date_range(start_time[:10], end_time[:10], freq='D')
+        for i in tqdm(range(len(date_range))):
+            try:
+                insert_to_clickhouse(
+                    pd_to_tuplelist(
+                        get_jq_bars(code_list,
+                                    str(date_range[i])[:10],
+                                    str(date_range[i])[:10], client, frequency),
+                        frequency), client, frequency)
+            # TODO log输出
+            except Exception as e:
+                raise Exception('Insert acution error', str(date_range[i])[:10])
+                continue
     else:
         raise NotImplementedError
 
 
-def fetch_jqdata(code, start_time: str, end_time: str, client, frequency: str):
+def get_jq_bars(code, start_time: str, end_time: str, client, frequency: str):
     """
     获取起止时间内单个或多个聚宽股票并添加自定义字段
 
@@ -174,6 +205,8 @@ def fetch_jqdata(code, start_time: str, end_time: str, client, frequency: str):
         frequency = 'daily'
     elif frequency in ['min', 'minute']:
         frequency = 'minute'
+    elif frequency in ['call_auction', 'auction']:
+        frequency = 'call_auction'
     else:
         raise NotImplementedError
 
@@ -181,6 +214,14 @@ def fetch_jqdata(code, start_time: str, end_time: str, client, frequency: str):
         'time', 'code', 'open', 'close', 'high', 'low', 'volume', 'money',
         'avg', 'high_limit', 'low_limit', 'pre_close'
     ]
+    if frequency == 'call_auction':
+        columns = [
+            'time',
+            'code',
+            'close',
+            'volume',
+            'amount',
+        ]
     empty_pd = pd.concat([pd.DataFrame({k: [] for k in columns}), None, None])
 
     # 查询最大datetime
@@ -194,25 +235,38 @@ def fetch_jqdata(code, start_time: str, end_time: str, client, frequency: str):
             start_time = config.start_date + ' 9:00:00'
         _start_time = start_time
 
-    if _start_time < end_time:
-        pd_data = jq.get_price(jq.normalize_code(code),
-                               start_date=_start_time,
-                               end_date=end_time,
-                               frequency=frequency,
-                               fields=[
-                                   'open', 'close', 'high', 'low', 'volume',
-                                   'money', 'avg', 'high_limit', 'low_limit',
-                                   'pre_close'
-                               ],
-                               skip_paused=True,
-                               fq='none',
-                               count=None,
-                               panel=False)
-        # TODO 有没有更优雅的方式
-        pd_data['pre_close'].fillna(
-            pd_data['open'], inplace=True)  #新股上市首日分钟线没有pre_close数据，用当天开盘价填充
-        pd_data = pd_data.dropna(axis=0, how='any')  # 删除包含NAN的行
+    if _start_time <= end_time:
+        if frequency in ['daily', 'minute']:
+            pd_data = jq.get_price(jq.normalize_code(code),
+                                   start_date=_start_time,
+                                   end_date=end_time,
+                                   frequency=frequency,
+                                   fields=[
+                                       'open', 'close', 'high', 'low', 'volume',
+                                       'money', 'avg', 'high_limit',
+                                       'low_limit', 'pre_close'
+                                   ],
+                                   skip_paused=True,
+                                   fq='none',
+                                   count=None,
+                                   panel=False)
+            # TODO 有没有更优雅的方式
+            pd_data['pre_close'].fillna(
+                pd_data['open'], inplace=True)  #新股上市首日分钟线没有pre_close数据，用当天开盘价填充
 
+        elif frequency == 'call_auction':
+            pd_data = jq.get_call_auction(jq.normalize_code(code),
+                                          start_date=_start_time,
+                                          end_date=end_time,
+                                          fields=[
+                                              'time',
+                                              'current',
+                                              'volume',
+                                              'money',
+                                          ])
+        else:
+            raise NotImplementedError
+        pd_data = pd_data.dropna(axis=0, how='any')  # 删除包含NAN的行
     else:
         return empty_pd
 
@@ -222,6 +276,7 @@ def fetch_jqdata(code, start_time: str, end_time: str, client, frequency: str):
         pd_data['datetime'] = pd_data['time']
 
         return pd_data.assign(
+            close=pd_data['current'],
             amount=pd_data['money'],
             code=pd_data['code'].apply(lambda x: x[:6]),  # code列聚宽格式转为六位纯数字格式
             date=pd_data['datetime'].apply(lambda x: str(x)[0:10]),
@@ -235,7 +290,11 @@ if __name__ == '__main__':
     # save_all_jqdata('2014-01-01 09:00:00',
     #                 '2021-05-08 17:00:00',
     #                 frequency='daily')
-    save_all_jqdata('2021-05-21 09:00:00',
-                    '2021-05-24 17:00:00',
-                    frequency='daily',
-                    database='test')
+    # save_bars('2021-05-21 09:00:00',
+    #                 '2021-05-24 17:00:00',
+    #           frequency='daily',
+    #           database='test')
+    save_bars('2021-05-21 09:00:00',
+              '2021-05-24 17:00:00',
+              frequency='auction',
+              database='test')

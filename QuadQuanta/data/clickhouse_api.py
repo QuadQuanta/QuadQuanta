@@ -53,6 +53,10 @@ def create_clickhouse_table(client, frequency: str):
                            high_limit Float32,low_limit Float32,pre_close Float32, date String, date_stamp Float64) \
                             ENGINE = MergeTree() ORDER BY (datetime, code)'
 
+    elif frequency in ['auction', 'call_auction']:
+        create_table_sql = 'CREATE TABLE IF NOT EXISTS call_auction (datetime DateTime,code String, close Float32, \
+                           volume Float64, amount Float64, date String, date_stamp Float64) ENGINE = MergeTree() ORDER BY (datetime, code)'
+
     else:
         raise NotImplementedError
     client.execute(create_table_sql)
@@ -84,6 +88,8 @@ def insert_to_clickhouse(data, client, frequency):
         insert_data_sql = 'INSERT INTO stock_day (datetime, code, open, close, high, low, volume, amount,\
              avg, high_limit, low_limit, pre_close, date, date_stamp) VALUES'
 
+    elif frequency in ['auction', 'call_auction']:
+        insert_data_sql = 'INSERT INTO call_auction (datetime, code, close, volume, amount, date, date_stamp) VALUES'
     else:
         raise NotImplementedError
     client.execute(insert_data_sql, data, types_check=True)
@@ -113,6 +119,8 @@ def query_exist_max_datetime(code, frequency, client):
 
     elif frequency in ['d', 'day', '1day', 'daily']:
         max_datetime_sql = 'SELECT max(datetime) from stock_day WHERE `code` IN %(code)s'
+    elif frequency in ['call_auction', 'auction']:
+        max_datetime_sql = 'SELECT max(datetime) from call_auction WHERE `code` IN %(code)s'
     else:
         raise NotImplementedError
 
@@ -150,6 +158,12 @@ def tuplelist_to_np(tuple_list: list, table_name: str):
                                ('amount', 'f8'), ('avg', 'f8'),
                                ('high_limit', 'f8'), ('low_limit', 'f8'),
                                ('pre_close', 'f8'), ('date', 'U10'),
+                               ('date_stamp', 'f8')])
+    elif table_name in ['call_auction']:
+        return np.array(tuple_list,
+                        dtype=[('datetime', 'object'), ('code', 'U8'),
+                               ('close', 'f8'), ('volume', 'f8'),
+                               ('amount', 'f8'), ('date', 'U10'),
                                ('date_stamp', 'f8')])
     else:
         raise NotImplementedError
@@ -210,6 +224,8 @@ def query_clickhouse(code: list = None,
         table_name = 'stock_day'
     elif frequency in ['min', 'minute', '1min']:
         table_name = 'stock_min'
+    elif frequency in ['auction', 'call_auction']:
+        table_name = 'call_auction'
     else:
         raise NotImplementedError
 
