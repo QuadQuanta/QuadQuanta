@@ -12,7 +12,7 @@
 
 # here put the import lib
 import numpy as np
-from QuadQuanta.data import query_clickhouse
+from QuadQuanta.data.clickhouse_api import query_clickhouse
 from tqdm import tqdm
 
 

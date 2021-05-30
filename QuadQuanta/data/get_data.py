@@ -86,7 +86,7 @@ def get_jq_bars(code,
     if str(exist_max_datetime) > config.start_date:  # 默认'2014-01-01'
         _start_time = str(exist_max_datetime + datetime.timedelta(hours=18))
     else:
-        if start_time < config.start_date:  # 默认'2014-01-01'
+        if start_time <= config.start_date:  # 默认'2014-01-01'
             start_time = config.start_date + ' 9:00:00'
         _start_time = start_time
 

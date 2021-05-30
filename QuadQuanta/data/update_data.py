@@ -14,7 +14,7 @@
 import datetime
 
 from QuadQuanta.config import config
-from QuadQuanta.data import save_bars
+from QuadQuanta.data.save_data import save_bars
 
 
 def update_day_bar():
