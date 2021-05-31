@@ -41,7 +41,7 @@ class BaseStrategy():
         """
         raise NotImplementedError
 
-    def on_bar(self, bar):
+    def on_bar(self, bars):
         """
         
         """
@@ -55,16 +55,10 @@ class BaseStrategy():
         日线回测逻辑
 
         """
-        for i in tqdm(range(0, len(self.trading_date) - 1)):
+        for i in tqdm(range(0, len(self.trading_date))):
             date = self.trading_date[i]
             self.today_data = self.day_data[self.day_data['date'] == date]
-            try:
-                for bar in self.today_data:
-                    self.on_bar(bar)
-            except Exception as e:
-                print(e)
-                continue
-
+            self.on_bar(self.today_data)
     # TODO
     async def asyn_backtest(self):
         """
