@@ -32,7 +32,7 @@ setup(
     url=URL,
     include_package_data=True,
     install_requires=INSTALL_REQUIRES,
-    exclude_package_data={},
+    exclude_package_data={'':['SRS.md']},
     zip_safe=False,
     classifiers=[
         'Programming Language :: Python',
