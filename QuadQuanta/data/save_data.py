@@ -20,8 +20,9 @@ import pandas as pd
 from clickhouse_driver import Client
 from QuadQuanta.config import config
 from QuadQuanta.data.clickhouse_api import (create_clickhouse_database,
-                             create_clickhouse_table, insert_to_clickhouse)
-from QuadQuanta.data.get_data import get_jq_bars
+                                            create_clickhouse_table,
+                                            insert_to_clickhouse)
+from QuadQuanta.data.get_data import get_jq_bars, get_trade_days
 from tqdm import tqdm
 
 
@@ -60,6 +61,8 @@ def pd_to_tuplelist(pd_data, frequency):
             'datetime', 'code', 'close', 'volume', 'amount', 'date',
             'date_stamp'
         ]
+    elif frequency in ['trade_days']:
+        base_keys_list = ['datetime', 'date']
     rawdata = OrderedDict().fromkeys(base_keys_list)
 
     if frequency in ['min', 'minute', '1min']:
@@ -81,6 +84,8 @@ def pd_to_tuplelist(pd_data, frequency):
                 lambda x: datetime.datetime.utcfromtimestamp(
                     x.astype(datetime.datetime) / pow(10, 9)),
                 pd_data.index.values))
+    elif frequency in ['trade_days']:
+        pass
     else:
         raise NotImplementedError
 
@@ -111,7 +116,7 @@ def save_bars(start_time='2014-01-01',
     jq.auth(config.jqusername, config.jqpasswd)
     # 强制转换start_time, end_time时间改为9:00:00和17:00
     client = Client(host=config.clickhouse_IP)
-    create_clickhouse_database(client, database)
+    create_clickhouse_database(database, client)
     client = Client(host=config.clickhouse_IP, database=database)
 
     start_time = start_time[:10] + ' 09:00:00'
@@ -123,7 +128,7 @@ def save_bars(start_time='2014-01-01',
     end_time = end_time[:10] + ' 17:00:00'
 
     # 表不存在则创建相应表
-    create_clickhouse_table(client, frequency)
+    create_clickhouse_table(frequency, client)
     # 这种方式获取股票列表会有NAN数据，且需要转换股票代码格式
     stock_pd = jq.get_all_securities().assign(code=lambda x: x.index)
     code_list = stock_pd['code'].apply(lambda x: str(x)[:6]).unique().tolist()
@@ -136,7 +141,7 @@ def save_bars(start_time='2014-01-01',
         insert_to_clickhouse(
             pd_to_tuplelist(
                 get_jq_bars(code_list, start_time, end_time, client, frequency),
-                frequency), client, frequency)
+                frequency), frequency, client)
 
     # 分钟级别数据保存，每个股票单独保存
     elif frequency in ['mim', 'minute']:
@@ -145,7 +150,7 @@ def save_bars(start_time='2014-01-01',
                 insert_to_clickhouse(
                     pd_to_tuplelist(
                         get_jq_bars(code_list[i], start_time, end_time, client,
-                                    frequency), frequency), client, frequency)
+                                    frequency), frequency), frequency, client)
             # TODO log输出
             except Exception as e:
                 print('{}:error:{}'.format(code_list[i], e))
@@ -162,7 +167,7 @@ def save_bars(start_time='2014-01-01',
                         get_jq_bars(code_list,
                                     str(date_range[i])[:10],
                                     str(date_range[i])[:10], client, frequency),
-                        frequency), client, frequency)
+                        frequency), frequency, client)
             # TODO log输出
             except Exception as e:
                 raise Exception('Insert acution error', str(date_range[i])[:10])
@@ -171,11 +176,24 @@ def save_bars(start_time='2014-01-01',
         raise NotImplementedError
 
 
+def save_trade_days(start_time=None, end_time=None, database=None):
+    jq.auth(config.jqusername, config.jqpasswd)
+    # 强制转换start_time, end_time时间改为9:00:00和17:00
+    client = Client(host=config.clickhouse_IP)
+    create_clickhouse_database(database, client)
+    client = Client(host=config.clickhouse_IP, database=database)
+    create_clickhouse_table('trade_days', client)
+    insert_to_clickhouse(
+        pd_to_tuplelist(get_trade_days(start_time, end_time), 'trade_days'),
+        'trade_days', client)
+
+
 if __name__ == '__main__':
     # save_all_jqdata('2014-01-01 09:00:00',
     #                 '2021-05-08 17:00:00',
     #                 frequency='daily')
-    save_bars('2021-05-21 09:00:00',
-              '2021-05-25 17:00:00',
-              frequency='daily',
-              database='test')
+    # save_bars('2021-05-21 09:00:00',
+    #           '2021-05-25 17:00:00',
+    #           frequency='daily',
+    #           database='test')
+    save_trade_days(database='test')

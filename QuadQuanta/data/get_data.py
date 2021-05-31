@@ -142,3 +142,14 @@ def get_jq_bars(code,
         if frequency in ['call_auction', 'auction']:
             pd_data = pd_data.assign(close=pd_data['current'])
         return pd_data
+
+
+def get_trade_days(start_time=None, end_time=None):
+    if start_time or end_time:
+        trade_days = jq.get_trade_days(start_time, end_time)
+    else:
+        trade_days = jq.get_all_trade_days()
+
+    pd_data = pd.DataFrame(trade_days, columns=['datetime'])
+    return pd_data.assign(
+        date=pd_data['datetime'].apply(lambda x: str(x)))
