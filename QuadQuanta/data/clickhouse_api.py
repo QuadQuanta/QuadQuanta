@@ -41,6 +41,7 @@ def create_clickhouse_table(type: str,
                                                     database='jqdata')):
     """
     创建clickhouse数据表
+
     Parameters
     ----------
     type : str
@@ -121,6 +122,7 @@ def query_exist_max_datetime(code=None,
                                                      database='jqdata')):
     """
     查询clickhouse表中某个code已经存在的最大日期, code=None表示表中的所有code
+
     Parameters
     ----------
     code : list, optional
@@ -207,8 +209,8 @@ def query_clickhouse(code: list = None,
                      frequency='daily',
                      database='jqdata') -> np.ndarray:
     """
-
     clickhouse查询接口,默认为None的条件,返回所有数据
+
     Parameters
     ----------
     code : list or str, optional
