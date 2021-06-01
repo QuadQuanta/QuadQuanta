@@ -21,7 +21,7 @@ from clickhouse_driver import Client
 from QuadQuanta.config import config
 from QuadQuanta.data.clickhouse_api import (create_clickhouse_database,
                                             create_clickhouse_table,
-                                            insert_to_clickhouse)
+                                            insert_clickhouse)
 from QuadQuanta.data.get_data import get_jq_bars, get_trade_days
 from tqdm import tqdm
 
@@ -107,11 +107,11 @@ def save_bars(start_time='2014-01-01',
     Parameters
     ----------
     start_time : str
-        [description]
+        开始时间
     end_time : str, 
-        [description] 
+        结束时间
     frequency : str, optional
-        [description], by default 'daily'
+        数据频率, by default 'daily'
     """
     jq.auth(config.jqusername, config.jqpasswd)
     # 强制转换start_time, end_time时间改为9:00:00和17:00
@@ -138,7 +138,7 @@ def save_bars(start_time='2014-01-01',
 
     # 日线级别数据保存，全部一起获取
     if frequency in ['d', 'daily', 'day']:
-        insert_to_clickhouse(
+        insert_clickhouse(
             pd_to_tuplelist(
                 get_jq_bars(code_list, start_time, end_time, client, frequency),
                 frequency), frequency, client)
@@ -147,7 +147,7 @@ def save_bars(start_time='2014-01-01',
     elif frequency in ['mim', 'minute']:
         for i in tqdm(range(len(code_list))):
             try:
-                insert_to_clickhouse(
+                insert_clickhouse(
                     pd_to_tuplelist(
                         get_jq_bars(code_list[i], start_time, end_time, client,
                                     frequency), frequency), frequency, client)
@@ -162,7 +162,7 @@ def save_bars(start_time='2014-01-01',
         date_range = pd.date_range(start_time[:10], end_time[:10], freq='D')
         for i in tqdm(range(len(date_range))):
             try:
-                insert_to_clickhouse(
+                insert_clickhouse(
                     pd_to_tuplelist(
                         get_jq_bars(code_list,
                                     str(date_range[i])[:10],
@@ -183,7 +183,7 @@ def save_trade_days(start_time=None, end_time=None, database=None):
     create_clickhouse_database(database, client)
     client = Client(host=config.clickhouse_IP, database=database)
     create_clickhouse_table('trade_days', client)
-    insert_to_clickhouse(
+    insert_clickhouse(
         pd_to_tuplelist(get_trade_days(start_time, end_time), 'trade_days'),
         'trade_days', client)
 

@@ -4,7 +4,7 @@
 @File    :   clickhouse_api.py
 @Time    :   2021/05/07
 @Author  :   levonwoo
-@Version :   0.1
+@Version :   0.2
 @Contact :   
 @License :   (C)Copyright 2020-2021
 @Desc    :   None
@@ -20,24 +20,33 @@ from QuadQuanta.config import config
 from QuadQuanta.utils.common import removeDuplicates
 
 
-def create_clickhouse_database(database: str = None,
-                               client=Client(host='127.0.0.1')):
+def create_clickhouse_database(database: str,
+                               client: Client = Client(host='127.0.0.1')):
+    """
+    数据库不存在则创建clickhouse数据库
+
+    Parameters
+    ----------
+    database : str
+        数据库名
+    client : Client, optional
+        clickhouse客户端连接, by default Client(host='127.0.0.1')
+    """
     create_database_sql = 'CREATE DATABASE IF NOT EXISTS %s' % database
     client.execute(create_database_sql)
 
 
-def create_clickhouse_table(type: str = None,
+def create_clickhouse_table(type: str,
                             client: Client = Client(host='127.0.0.1',
                                                     database='jqdata')):
     """
-    创建clickhouse表
-
+    创建clickhouse数据表
     Parameters
     ----------
-    client : clickhouse_driver.Client
-        和clickhouse的客户端连接
     type : str
         存储表类型,已完成的有日线（daily）,一分钟线(minute),开盘竞价,交易日历
+    client : Client, optional
+        clickhouse的客户端连接, by default Client(host='127.0.0.1', database='jqdata')
 
     Raises
     ------
@@ -68,10 +77,10 @@ def create_clickhouse_table(type: str = None,
     client.execute(create_table_sql)
 
 
-def insert_to_clickhouse(data,
-                         type,
-                         client: Client = Client(host='127.0.0.1',
-                                                 database='jqdata')):
+def insert_clickhouse(data,
+                      type,
+                      client: Client = Client(host='127.0.0.1',
+                                              database='jqdata')):
     """
     将数据插入clickhouse数据库
 
@@ -79,10 +88,10 @@ def insert_to_clickhouse(data,
     ----------
     data : tuple_list
         元组数组类型数据,每个元组为一行
-    client : clickhouse_driver.Client
-        和clickhouse的客户端连接
     type : str
         存储表类型,已完成的有日线（daily）,一分钟线(minute),开盘竞价,交易日历
+    client : Client, optional
+        clickhouse的客户端连接, by default Client(host='127.0.0.1', database='jqdata')
 
     Raises
     ------
@@ -110,21 +119,26 @@ def query_exist_max_datetime(code=None,
                              type='daily',
                              client: Client = Client(host='127.0.0.1',
                                                      database='jqdata')):
-    """[summary]
-
+    """
+    查询clickhouse表中某个code已经存在的最大日期, code=None表示表中的所有code
     Parameters
     ----------
-    code : list
-        六位数股票代码列表,如['000001'], ['000001',...,'689009']
-    type : str
-        数据频率,已完成的有日线（daily）,一分钟线(minute)。
-    client : clickhouse_driver.Client
-        和clickhouse的客户端连接
+    code : list, optional
+        六位数股票代码列表,如['000001'], ['000001',...,'689009'], by default None
+    type : str, optional
+        数据类型,已完成的有日线（daily）,一分钟线(minute),竞价(call_auction),交易日历(trade_days), by default 'daily'
+    client : clickhouse_driver.Client, optional
+        clickhouse客户端连接, by default Client(host='127.0.0.1', database='jqdata')
 
     Returns
     -------
-    tuple_list
-        返回结果为tuple_list格式,取tuple_list[0][0]为
+    [type]
+        [description]
+
+    Raises
+    ------
+    NotImplementedError
+        [description]
     """
     if isinstance(code, str):
         code = list(map(str.strip, code.split(',')))
@@ -136,7 +150,6 @@ def query_exist_max_datetime(code=None,
         max_datetime_sql = 'SELECT max(datetime) from call_auction WHERE `code` IN %(code)s'
     elif type in ['trade_days']:
         max_datetime_sql = 'SELECT max(datetime) from trade_days'
-        # TODO return
     else:
         raise NotImplementedError
 
@@ -152,7 +165,7 @@ def tuplelist_to_np(tuple_list: list, table_name: str):
     tuple_list : list
         SELECT语句的到的tuple_list
     table_name : str
-        表名,日线表为'stock_day',分钟表为'stock_min'
+        表名,日线表为'stock_day',分钟表为'stock_min',竞价表为'call_auction',交易日历表为'trade_days'
 
     Returns
     -------
@@ -193,29 +206,29 @@ def query_clickhouse(code: list = None,
                      end_time: str = None,
                      frequency='daily',
                      database='jqdata') -> np.ndarray:
-    """[summary]
+    """
 
+    clickhouse查询接口,默认为None的条件,返回所有数据
     Parameters
     ----------
-    code : list, optional
-        [description], by default None
+    code : list or str, optional
+        六位数字股票代码列表, by default None
     start_time : str, optional
-        [description], by default None
+        开始日期, by default None
     end_time : str, optional
-        [description], by default None
+        结束日期, by default None
     frequency : str, optional
-        [description], by default 'daily'
+        数据周期, by default 'daily'
     database : str, optional
-        数据库名,默认为聚宽数据, by default 'jqdata'
+        clickhouse数据库名,默认从聚宽数据查询, by default 'jqdata'
 
     Returns
     -------
     np.ndarray
         [description]
-
     Raises
     ------
-    NotImplementedError
+    ValueError
         [description]
     NotImplementedError
         [description]
@@ -279,7 +292,6 @@ def query_clickhouse(code: list = None,
     #  TODO clickhouse分片
 
     # TODO 判读tuple_list是否有序
-    # TODO LIMIT 取时间序列
     # 默认有序条件下删除res_tuple_list重复数据
     res_tuple_list = removeDuplicates(res_tuple_list)
     # 元组数组通过numpy结构化,注意数据长度code:8字符 date:10字符.可能存在问题
@@ -287,26 +299,26 @@ def query_clickhouse(code: list = None,
     return tuplelist_to_np(res_tuple_list, table_name)
 
 
-def query_N_clickhouse(limit: int,
+def query_N_clickhouse(limit_N: int,
                        code: list = None,
                        end_time: str = None,
                        frequency='daily',
                        database='jqdata') -> np.ndarray:
     """
-    取N个时间序列
+    获取结束日期之前的N个时间序列数据
 
     Parameters
     ----------
+    limit_N : int
+        时间序列个数
     code : list, optional
-        [description], by default None
-    start_time : str, optional
-        [description], by default None
+        股票代码列表, by default None
     end_time : str, optional
-        [description], by default None
+        结束时间, by default None
     frequency : str, optional
-        [description], by default 'daily'
+        周期, by default 'daily'
     database : str, optional
-        数据库名,默认为聚宽数据, by default 'jqdata'
+        clickhouse数据库名, by default 'jqdata'
 
     Returns
     -------
@@ -315,8 +327,6 @@ def query_N_clickhouse(limit: int,
 
     Raises
     ------
-    NotImplementedError
-        [description]
     NotImplementedError
         [description]
     """
@@ -349,7 +359,7 @@ def query_N_clickhouse(limit: int,
         res_tuple_list = client.execute(sql, {
             'end_time': end_time,
             'code': code,
-            'limit': limit,
+            'limit': limit_N,
         })
     elif end_time:
         sql = "SELECT x.* FROM %s x " % table_name + " WHERE `datetime` <= %(end_time)s \
@@ -357,7 +367,7 @@ def query_N_clickhouse(limit: int,
 
         res_tuple_list = client.execute(sql, {
             'end_time': end_time,
-            'limit': limit,
+            'limit': limit_N,
         })
     elif code:
         # 注意WHERE前的空格
@@ -366,12 +376,12 @@ def query_N_clickhouse(limit: int,
 
         res_tuple_list = client.execute(sql, {
             'code': code,
-            'limit': limit,
+            'limit': limit_N,
         })
     else:
         sql = "SELECT x.* FROM %s x " % table_name + " ORDER BY (`datetime`, `code`) DESC LIMIT %(limit)s by `code`"
         res_tuple_list = client.execute(sql, {
-            'limit': limit,
+            'limit': limit_N,
         })
 
     # 默认有序条件下删除res_tuple_list重复数据
@@ -381,43 +391,8 @@ def query_N_clickhouse(limit: int,
     return tuplelist_to_np(res_tuple_list, table_name)
 
 
-async def asynquery_clickhouse(code: list = None,
-                               start_time: str = None,
-                               end_time: str = None,
-                               frequency='daily',
-                               database='jqdata') -> np.ndarray:
-    """
-    异步查询
-
-    Parameters
-    ----------
-    code : list, optional
-        [description], by default None
-    start_time : str, optional
-        [description], by default None
-    end_time : str, optional
-        [description], by default None
-    frequency : str, optional
-        [description], by default 'daily'
-    database : str, optional
-        数据库名,默认为聚宽数据, by default 'jqdata'
-
-    Returns
-    -------
-    np.ndarray
-        [description]
-
-    Raises
-    ------
-    NotImplementedError
-        [description]
-    NotImplementedError
-        [description]
-    """
-    raise NotImplementedError
-
-
 if __name__ == '__main__':
     client = Client(host=config.clickhouse_IP, database='test')
-    print(len(query_N_clickhouse(10)))
+    # print(len(query_N_clickhouse(10)))
+    query_exist_max_datetime(type='trade_days', client=client)
     # create_clickhouse_table('trade_days', client)

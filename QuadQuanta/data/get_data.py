@@ -20,30 +20,32 @@ from QuadQuanta.data.clickhouse_api import query_exist_max_datetime
 from QuadQuanta.utils.datetime_func import datetime_convert_stamp
 
 
-def get_jq_bars(code,
-                start_time: str,
-                end_time: str,
-                client=None,
-                frequency: str = 'daily'):
+def get_jq_bars(
+    code,
+    start_time: str,
+    end_time: str,
+    frequency: str = 'daily',
+    client=None,
+):
     """
-    获取起止时间内单个或多个聚宽股票并添加自定义字段
+    获取起止时间内单个或多个聚宽股票并添加自定义字段, client非空表示开始时间为数据库最后的位置
 
     Parameters
     ----------
     code : list or str
-        [description]
+        六位数字股票代码列表，如['000001'],['000001',...,'003039'],str会强制转换为list
     start_time : str
-        [description]
+        开始时间
     end_time : str
-        [description]
-    client : [type]
-        [description]
+        结束时间
     frequency : str
-        [description]
+        数据频率
+    client : Client, optional
+        clickhouse客户端连接,by default None
 
     Returns
     -------
-    [type]
+    pd.DataFrame
         [description]
     """
     if isinstance(code, str):
@@ -151,5 +153,4 @@ def get_trade_days(start_time=None, end_time=None):
         trade_days = jq.get_all_trade_days()
 
     pd_data = pd.DataFrame(trade_days, columns=['datetime'])
-    return pd_data.assign(
-        date=pd_data['datetime'].apply(lambda x: str(x)))
+    return pd_data.assign(date=pd_data['datetime'].apply(lambda x: str(x)))
