@@ -1,6 +1,21 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+'''
+@File    :   data_trans.py
+@Time    :   2021/06/02
+@Author  :   levonwoo
+@Version :   0.2
+@Contact :   
+@License :   (C)Copyright 2020-2021
+@Desc    :   数据类型转换
+'''
+
+# here put the import lib
+
 import datetime
-import numpy as np
 from collections import OrderedDict
+
+import numpy as np
 
 
 def tuplelist_to_np(tuple_list: list, table_name: str):
@@ -25,7 +40,7 @@ def tuplelist_to_np(tuple_list: list, table_name: str):
         [description]
     """
 
-    if table_name in ['stock_day', 'stock_min','daily', 'minute']:
+    if table_name in ['stock_day', 'stock_min', 'daily', 'minute']:
         # 元组数组通过numpy结构化,注意数据长度code:8字符 date:10字符.可能存在问题
         return np.array(tuple_list,
                         dtype=[('datetime', 'object'), ('code', 'U8'),
@@ -35,7 +50,7 @@ def tuplelist_to_np(tuple_list: list, table_name: str):
                                ('high_limit', 'f8'), ('low_limit', 'f8'),
                                ('pre_close', 'f8'), ('date', 'U10'),
                                ('date_stamp', 'f8')])
-    elif table_name in ['call_auction','auction']:
+    elif table_name in ['call_auction', 'auction']:
         return np.array(tuple_list,
                         dtype=[('datetime', 'object'), ('code', 'U8'),
                                ('close', 'f8'), ('volume', 'f8'),
@@ -46,7 +61,6 @@ def tuplelist_to_np(tuple_list: list, table_name: str):
                         dtype=[('datetime', 'object'), ('date', 'U10')])
     else:
         raise NotImplementedError
-
 
 
 def pd_to_tuplelist(pd_data, frequency):

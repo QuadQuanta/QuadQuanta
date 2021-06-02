@@ -7,7 +7,7 @@
 @Version :   0.2
 @Contact :   
 @License :   (C)Copyright 2020-2021
-@Desc    :   None
+@Desc    :   获取数据模块
 '''
 
 # here put the import lib
@@ -29,6 +29,35 @@ def get_bars(code=None,
              data_soure=DataSource.CLICKHOUSE,
              count=None,
              **kwargs):
+    """
+    通用K线获取接口，包括日线、分钟线、竞价。kwargs可选字段包括'client'：数据库连接,'format':返回数据类型
+
+    Parameters
+    ----------
+    code : list or str, optional
+        股票代码, by default None
+    start_time : str, optional
+        数据开始时间, by default '1970-01-01'
+    end_time : str, optional
+        数据结束时间, by default '2100-01-01'
+    frequency : str, optional
+        k线周期, by default 'daily'
+    data_soure : str , optional
+        数据源, by default DataSource.CLICKHOUSE
+    count : int, optional
+        时间序列个数, by default None
+    kwargs: dict ,optional
+        可选关键字有client:数据库连接,用于数据库后增量更新;format:指定返回值类型, np 或者 pd
+
+    Returns
+    -------
+    pandas.DataFrame or numpy.ndarray 
+
+    Raises
+    ------
+    NotImplementedError
+        [description]
+    """
     if data_soure == DataSource.JQDATA:
         return get_jq_bars(code, start_time, end_time, frequency, count,
                            **kwargs)
@@ -46,26 +75,40 @@ def get_jq_bars(code=None,
                 count=None,
                 **kwargs):
     """
-    获取起止时间内单个或多个聚宽股票并添加自定义字段, client非空表示开始时间为数据库最后的位置
+    从聚宽源获取起止时间内单个或多个聚宽股票并添加自定义字段
 
     Parameters
     ----------
-    code : list or str
-        六位数字股票代码列表，如['000001'],['000001',...,'003039'],str会强制转换为list
-    start_time : str
-        开始时间
-    end_time : str
-        结束时间
-    frequency : str
-        数据频率
-    client : Client, optional
-        clickhouse客户端连接,by default None
+    code : list or str, optional
+        六位数字股票代码列表，如['000001'],['000001',...,'003039'],str会强制转换为list, by default None
+    start_time : str, optional
+        数据开始时间, by default '1970-01-01'
+    end_time : str, optional
+        数据结束时间, by default '2100-01-01'
+    frequency : str, optional
+        k线周期, by default 'daily'
+    count : int, optional
+        时间序列个数, by default None
+    kwargs: dict ,optional
+        可选关键字有client:数据库连接,用于数据库后增量更新;format:指定返回值类型, np 或者 pd
 
     Returns
     -------
-    pd.DataFrame
+    [type]
+        [description]
+
+    Raises
+    ------
+    ValueError
+        [description]
+    NotImplementedError
+        [description]
+    NotImplementedError
+        [description]
+    Exception
         [description]
     """
+
     jq.auth(config.jqusername, config.jqpasswd)
     if isinstance(code, str):
         code = list(map(str.strip, code.split(',')))
@@ -188,11 +231,47 @@ def get_click_bars(code=None,
                    frequency='daily',
                    count=None,
                    **kwargs):
-    # TODO 返回pandas格式
+    """
+    从clickhouse数据库获取
+
+    ----------
+    code : list or str, optional
+        六位数字股票代码列表，如['000001'],['000001',...,'003039'],str会强制转换为list, by default None
+    start_time : str, optional
+        数据开始时间, by default '1970-01-01'
+    end_time : str, optional
+        数据结束时间, by default '2100-01-01'
+    frequency : str, optional
+        k线周期, by default 'daily'
+    count : int, optional
+        时间序列个数, by default None
+    kwargs: dict ,optional
+        可选关键字有client:数据库连接,用于数据库后增量更新;format:指定返回值类型, np 或者 pd
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
     if count:
-        return query_N_clickhouse(count, code, end_time, frequency, **kwargs)
+        res = query_N_clickhouse(count, code, end_time, frequency, **kwargs)
+        try:
+            if kwargs['format'] in ['pd', 'pandas']:
+                return pd.DataFrame(res).set_index('datetime')
+            else:
+                return res
+        except:
+            return res
     else:
-        return query_clickhouse(code, start_time, end_time, frequency, **kwargs)
+        res = query_clickhouse(code, start_time, end_time, frequency, **kwargs)
+        try:
+            if kwargs['format'] in ['pd', 'pandas']:
+                return pd.DataFrame(res).set_index('datetime')
+            else:
+                return res
+        except Exception as e:
+            print(e)
+            return res
 
 
 def get_trade_days(start_time=None, end_time=None):
@@ -207,9 +286,9 @@ def get_trade_days(start_time=None, end_time=None):
 
 if __name__ == '__main__':
     print(
-        get_bars(['000001'],
+        get_bars(['000001', '000002'],
                  '2020-01-01',
                  '2020-02-01',
                  'daily',
-                 DataSource.JQDATA,
-                 format='np'))
+                 DataSource.CLICKHOUSE,
+                 format='pd'))
