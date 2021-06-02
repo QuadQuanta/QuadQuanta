@@ -67,15 +67,21 @@ def save_bars(start_time='2014-01-01',
     # 日线级别数据保存，全部一起获取
     if frequency in ['d', 'daily', 'day']:
         insert_clickhouse(
-            get_jq_bars(code_list, start_time, end_time, frequency, client=client),
-            frequency, client)
+            get_jq_bars(code_list,
+                        start_time,
+                        end_time,
+                        frequency,
+                        client=client), frequency, client)
 
     # 分钟级别数据保存，每个股票单独保存
     elif frequency in ['mim', 'minute']:
         for i in tqdm(range(len(code_list))):
             try:
                 insert_clickhouse(
-                    get_jq_bars(code_list[i], start_time, end_time, frequency,
+                    get_jq_bars(code_list[i],
+                                start_time,
+                                end_time,
+                                frequency,
                                 client=client), frequency, client)
             # TODO log输出
             except Exception as e:
@@ -91,8 +97,9 @@ def save_bars(start_time='2014-01-01',
                 insert_clickhouse(
                     get_jq_bars(code_list,
                                 str(date_range[i])[:10],
-                                str(date_range[i])[:10], frequency, client=client),
-                    frequency, client)
+                                str(date_range[i])[:10],
+                                frequency,
+                                client=client), frequency, client)
             # TODO log输出
             except Exception as e:
                 print(f"{code_list[i]}:error:{e}")

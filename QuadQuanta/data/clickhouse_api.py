@@ -7,7 +7,7 @@
 @Version :   0.2
 @Contact :   
 @License :   (C)Copyright 2020-2021
-@Desc    :   None
+@Desc    :   clickhouse接口
 '''
 
 import asyncio
@@ -268,7 +268,7 @@ def query_N_clickhouse(count: int,
     end_time : str, optional
         结束时间, by default '2200-01-01'
     frequency : str, optional
-        周期, by default 'daily'
+        k线周期, by default 'daily'
     database : str, optional
         clickhouse数据库名, by default 'jqdata'
 
