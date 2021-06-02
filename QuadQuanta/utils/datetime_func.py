@@ -34,17 +34,17 @@ def date_convert_stamp(date):
 
 def datetime_convert_stamp(time_):
     """
-    explanation:
-       转换日期时间的字符串为浮点数的时间戳
+    转换日期时间的字符串为浮点数的时间戳
 
-    params:
-        * time_->
-            含义: 日期时间
-            类型: str
-            参数支持: ['2018-01-01 00:00:00']
+    Parameters
+    ----------
+    time_ : str
+        日期时间
 
-    return:
-        time
+    Returns
+    -------
+    float
+        浮点数时间戳
     """
     if len(str(time_)) == 10:
         # yyyy-mm-dd格式
