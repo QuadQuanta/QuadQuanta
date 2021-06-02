@@ -16,17 +16,35 @@ import datetime
 import jqdatasdk as jq
 import pandas as pd
 from QuadQuanta.config import config
-from QuadQuanta.data.clickhouse_api import query_exist_max_datetime
+from QuadQuanta.data.clickhouse_api import query_exist_max_datetime, query_clickhouse, query_N_clickhouse
+from QuadQuanta.data.data_trans import pd_to_tuplelist, tuplelist_to_np
 from QuadQuanta.utils.datetime_func import datetime_convert_stamp
+from QuadQuanta.const import *
 
 
-def get_jq_bars(
-    code,
-    start_time: str,
-    end_time: str,
-    frequency: str = 'daily',
-    client=None,
-):
+def get_bars(code=None,
+             start_time='1970-01-01',
+             end_time='2100-01-01',
+             frequency='daily',
+             data_soure=DataSource.CLICKHOUSE,
+             count=None,
+             **kwargs):
+    if data_soure == DataSource.JQDATA:
+        return get_jq_bars(code, start_time, end_time, frequency, count,
+                           **kwargs)
+    elif data_soure == DataSource.CLICKHOUSE:
+        return get_click_bars(code, start_time, end_time, frequency, count,
+                              **kwargs)
+    else:
+        raise NotImplementedError
+
+
+def get_jq_bars(code=None,
+                start_time='1970-01-01',
+                end_time='2100-01-01',
+                frequency='daily',
+                count=None,
+                **kwargs):
     """
     获取起止时间内单个或多个聚宽股票并添加自定义字段, client非空表示开始时间为数据库最后的位置
 
@@ -48,11 +66,16 @@ def get_jq_bars(
     pd.DataFrame
         [description]
     """
+    jq.auth(config.jqusername, config.jqpasswd)
     if isinstance(code, str):
         code = list(map(str.strip, code.split(',')))
-
     if len(code) == 0:
         raise ValueError
+
+    columns = [
+        'time', 'code', 'open', 'close', 'high', 'low', 'volume', 'money',
+        'avg', 'high_limit', 'low_limit', 'pre_close'
+    ]
 
     if frequency in ['d', 'day', 'daily']:
         frequency = 'daily'
@@ -60,31 +83,19 @@ def get_jq_bars(
         frequency = 'minute'
     elif frequency in ['call_auction', 'auction']:
         frequency = 'call_auction'
+        columns = ['time', 'code', 'close', 'volume', 'amount']
     else:
         raise NotImplementedError
 
-    columns = [
-        'time', 'code', 'open', 'close', 'high', 'low', 'volume', 'money',
-        'avg', 'high_limit', 'low_limit', 'pre_close'
-    ]
-    if frequency == 'call_auction':
-        columns = [
-            'time',
-            'code',
-            'close',
-            'volume',
-            'amount',
-        ]
     empty_pd = pd.concat([pd.DataFrame({k: [] for k in columns}), None, None])
 
     # 查询最大datetime
-    if client:
+    if 'client' in kwargs.keys():
         exist_max_datetime = query_exist_max_datetime(code, frequency,
-                                                      client)[0][0]
+                                                      kwargs['client'])[0][0]
     else:
         exist_max_datetime = config.start_date
-    # 数据从2014年开始保存
-    # TODO 用交易日历代替简单的日期加一
+    # 从最大datetime的次日开始
     if str(exist_max_datetime) > config.start_date:  # 默认'2014-01-01'
         _start_time = str(exist_max_datetime + datetime.timedelta(hours=18))
     else:
@@ -94,19 +105,37 @@ def get_jq_bars(
 
     if _start_time <= end_time:
         if frequency in ['daily', 'minute']:
-            pd_data = jq.get_price(jq.normalize_code(code),
-                                   start_date=_start_time,
-                                   end_date=end_time,
-                                   frequency=frequency,
-                                   fields=[
-                                       'open', 'close', 'high', 'low', 'volume',
-                                       'money', 'avg', 'high_limit',
-                                       'low_limit', 'pre_close'
-                                   ],
-                                   skip_paused=True,
-                                   fq='none',
-                                   count=None,
-                                   panel=False)
+            if count:
+                _start_time = None
+                pd_data = jq.get_price(jq.normalize_code(code),
+                                       start_date=_start_time,
+                                       end_date=end_time,
+                                       frequency=frequency,
+                                       fields=[
+                                           'open', 'close', 'high', 'low',
+                                           'volume', 'money', 'avg',
+                                           'high_limit', 'low_limit',
+                                           'pre_close'
+                                       ],
+                                       skip_paused=True,
+                                       fq='none',
+                                       count=count,
+                                       panel=False)
+            else:
+                pd_data = jq.get_price(jq.normalize_code(code),
+                                       start_date=_start_time,
+                                       end_date=end_time,
+                                       frequency=frequency,
+                                       fields=[
+                                           'open', 'close', 'high', 'low',
+                                           'volume', 'money', 'avg',
+                                           'high_limit', 'low_limit',
+                                           'pre_close'
+                                       ],
+                                       skip_paused=True,
+                                       fq='none',
+                                       count=None,
+                                       panel=False)
             # TODO 有没有更优雅的方式
             pd_data['pre_close'].fillna(
                 pd_data['open'],
@@ -126,7 +155,7 @@ def get_jq_bars(
             raise NotImplementedError
         pd_data = pd_data.dropna(axis=0, how='any')  # 删除包含NAN的行
     else:
-        return empty_pd
+        raise Exception('开始日期大于结束日期')
 
     if len(pd_data) == 0:
         return empty_pd
@@ -141,9 +170,29 @@ def get_jq_bars(
                 lambda x: datetime_convert_stamp(x))).set_index('datetime',
                                                                 drop=True,
                                                                 inplace=False)
-        if frequency in ['call_auction', 'auction']:
+        if frequency == 'call_auction':
             pd_data = pd_data.assign(close=pd_data['current'])
-        return pd_data
+        try:
+            if kwargs['format'] in ['pd', 'pandas']:
+                return pd_data
+            elif kwargs['format'] in ['np', 'numpy']:
+                return tuplelist_to_np(pd_to_tuplelist(pd_data, frequency),
+                                       frequency)
+        except:
+            return pd_to_tuplelist(pd_data, frequency)
+
+
+def get_click_bars(code=None,
+                   start_time='1970-01-01',
+                   end_time='2100-01-01',
+                   frequency='daily',
+                   count=None,
+                   **kwargs):
+    # TODO 返回pandas格式
+    if count:
+        return query_N_clickhouse(count, code, end_time, frequency, **kwargs)
+    else:
+        return query_clickhouse(code, start_time, end_time, frequency, **kwargs)
 
 
 def get_trade_days(start_time=None, end_time=None):
@@ -154,3 +203,13 @@ def get_trade_days(start_time=None, end_time=None):
 
     pd_data = pd.DataFrame(trade_days, columns=['datetime'])
     return pd_data.assign(date=pd_data['datetime'].apply(lambda x: str(x)))
+
+
+if __name__ == '__main__':
+    print(
+        get_bars(['000001'],
+                 '2020-01-01',
+                 '2020-02-01',
+                 'daily',
+                 DataSource.JQDATA,
+                 format='np'))
