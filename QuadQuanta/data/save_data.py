@@ -11,90 +11,18 @@
 '''
 
 import datetime
-import time
 # here put the import lib
-from collections import OrderedDict
 
 import jqdatasdk as jq
 import pandas as pd
 from clickhouse_driver import Client
+from QuadQuanta.data.data_trans import pd_to_tuplelist
 from QuadQuanta.config import config
 from QuadQuanta.data.clickhouse_api import (create_clickhouse_database,
                                             create_clickhouse_table,
                                             insert_clickhouse)
 from QuadQuanta.data.get_data import get_jq_bars, get_trade_days
 from tqdm import tqdm
-
-
-def pd_to_tuplelist(pd_data, frequency):
-    """
-    pandas.DataFrame数据转为tuple_list,每一行为tuple_list中的tuple
-
-    遍历pandas.DataFrame每一列，赋值到字典，字典值转为二维列表，map(tuple, zip(*array))对二维列表转置
-
-    Parameters
-    ----------
-    pd_data : pandas.DataFrame
-        聚宽get_price函数返回结果
-    frequency : str
-        数据频率，已完成的有日线（daily），一分钟线(minute)。
-
-    Returns
-    -------
-    list
-        [description]
-
-    Raises
-    ------
-    NotImplementedError
-        [description]
-    """
-    if len(pd_data) == 0:
-        return []
-
-    base_keys_list = [
-        'datetime', 'code', 'open', 'close', 'high', 'low', 'volume', 'amount',
-        'avg', 'high_limit', 'low_limit', 'pre_close', 'date', 'date_stamp'
-    ]
-    if frequency in ['auction', 'call_auction']:
-        base_keys_list = [
-            'datetime', 'code', 'close', 'volume', 'amount', 'date',
-            'date_stamp'
-        ]
-    elif frequency in ['trade_days']:
-        base_keys_list = ['datetime', 'date']
-    rawdata = OrderedDict().fromkeys(base_keys_list)
-
-    if frequency in ['min', 'minute', '1min']:
-        rawdata['datetime'] = list(
-            map(
-                lambda x: datetime.datetime.utcfromtimestamp(
-                    x.astype(datetime.datetime) / pow(10, 9)),
-                pd_data.index.values))
-    elif frequency in ['d', 'day', '1day', 'daily']:
-        # 时间+15小时表示收盘时间
-        rawdata['datetime'] = list(
-            map(
-                lambda x: datetime.datetime.utcfromtimestamp(
-                    x.astype(datetime.datetime) / pow(10, 9)) + datetime.
-                timedelta(hours=15), pd_data.index.values))
-    elif frequency in ['auction', 'call_auction']:
-        rawdata['datetime'] = list(
-            map(
-                lambda x: datetime.datetime.utcfromtimestamp(
-                    x.astype(datetime.datetime) / pow(10, 9)),
-                pd_data.index.values))
-    elif frequency in ['trade_days']:
-        pass
-    else:
-        raise NotImplementedError
-
-    for filed, series in pd_data.iteritems():
-        if filed in rawdata.keys():
-            rawdata[filed] = series.tolist()
-    #  list(rawdata.values())表示字典值转为列表
-    #  map(tuple, zip(*array))表示二维数组转置
-    return list(map(tuple, zip(*list(rawdata.values()))))
 
 
 def save_bars(start_time='2014-01-01',
@@ -139,22 +67,20 @@ def save_bars(start_time='2014-01-01',
     # 日线级别数据保存，全部一起获取
     if frequency in ['d', 'daily', 'day']:
         insert_clickhouse(
-            pd_to_tuplelist(
-                get_jq_bars(code_list, start_time, end_time, client, frequency),
-                frequency), frequency, client)
+            get_jq_bars(code_list, start_time, end_time, frequency, client=client),
+            frequency, client)
 
     # 分钟级别数据保存，每个股票单独保存
     elif frequency in ['mim', 'minute']:
         for i in tqdm(range(len(code_list))):
             try:
                 insert_clickhouse(
-                    pd_to_tuplelist(
-                        get_jq_bars(code_list[i], start_time, end_time, client,
-                                    frequency), frequency), frequency, client)
+                    get_jq_bars(code_list[i], start_time, end_time, frequency,
+                                client=client), frequency, client)
             # TODO log输出
             except Exception as e:
-                print('{}:error:{}'.format(code_list[i], e))
-                raise Exception('Insert min data error', code_list[i])
+                print(f"{code_list[i]}:error:{e}")
+                # raise Exception('Insert minute data error', code_list[i])
                 continue
 
     # 竞价数据，按日期保存
@@ -163,14 +89,14 @@ def save_bars(start_time='2014-01-01',
         for i in tqdm(range(len(date_range))):
             try:
                 insert_clickhouse(
-                    pd_to_tuplelist(
-                        get_jq_bars(code_list,
-                                    str(date_range[i])[:10],
-                                    str(date_range[i])[:10], client, frequency),
-                        frequency), frequency, client)
+                    get_jq_bars(code_list,
+                                str(date_range[i])[:10],
+                                str(date_range[i])[:10], frequency, client=client),
+                    frequency, client)
             # TODO log输出
             except Exception as e:
-                raise Exception('Insert acution error', str(date_range[i])[:10])
+                print(f"{code_list[i]}:error:{e}")
+                # raise Exception('Insert acution error', str(date_range[i])[:10])
                 continue
     else:
         raise NotImplementedError
@@ -192,8 +118,8 @@ if __name__ == '__main__':
     # save_all_jqdata('2014-01-01 09:00:00',
     #                 '2021-05-08 17:00:00',
     #                 frequency='daily')
-    # save_bars('2021-05-21 09:00:00',
-    #           '2021-05-25 17:00:00',
-    #           frequency='daily',
-    #           database='test')
-    save_trade_days(database='test')
+    save_bars('2014-05-21 09:00:00',
+              '2014-05-22 17:00:00',
+              frequency='minute',
+              database='test')
+    # save_trade_days(database='test')

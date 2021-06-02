@@ -19,3 +19,6 @@ history*
 strategy/
 *.egg-info/
 .VSCodeCounter/
+docs/
+SRS.*
+SOD.*
