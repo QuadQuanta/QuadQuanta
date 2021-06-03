@@ -57,5 +57,35 @@ def datetime_convert_stamp(time_):
         return time.mktime(time.strptime(timestr, '%Y-%m-%d %H:%M:%S'))
 
 
+def is_valid_date(strdate):
+    """
+    判断字符传日期是否合法
+
+    Parameters
+    ----------
+    strdate : str
+        待判断的字符串日期
+
+    Returns
+    -------
+    bool
+        日期合法返回True
+
+    Raises
+    ------
+    ValueError
+        日期非法则抛出ValueError
+    """
+    try:
+        if ':' in strdate:
+            time.strptime(strdate, "%Y-%m-%d %H:%M:%S")
+        else:
+            time.strptime(strdate, "%Y-%m-%d")
+        return True
+    except:
+        raise ValueError('非法日期格式')
+
+
 if __name__ == '__main__':
-    pass
+    if is_valid_date('2030-01-01') and is_valid_date('2021-0-03'):
+        print('a')
