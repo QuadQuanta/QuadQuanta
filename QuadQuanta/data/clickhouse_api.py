@@ -80,6 +80,23 @@ def create_clickhouse_table(type: str,
     client.execute(create_table_sql)
 
 
+def drop_click_table(table_name: str,
+                     client: Client = Client(host='127.0.0.1',
+                                             database='jqdata')):
+    """
+    丢弃clickhouse表
+
+    Parameters
+    ----------
+    table_name : str
+        要丢弃的表名
+    client : Client, optional
+        clickhouse的客户端连接, by default Client(host='127.0.0.1', database='jqdata')
+    """
+    drop_sql = "DROP TABLE IF EXISTS %s" % table_name
+    client.execute(drop_sql)
+
+
 def insert_clickhouse(data,
                       type,
                       client: Client = Client(host='127.0.0.1',
@@ -193,25 +210,33 @@ def query_clickhouse(code: list = None,
     NotImplementedError
         [description]
     """
-
-    if is_valid_date(start_time) and is_valid_date(end_time):
-        try:
-            time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            start_time = start_time + ' 09:00:00'
-            end_time = end_time + ' 17:00:00'
-    #  判断日期合法
-    if start_time > end_time:
-        raise ValueError('开始时间大于结束时间')
-
     if frequency in ['day', 'daily', 'd']:
         table_name = 'stock_day'
     elif frequency in ['min', 'minute', '1min']:
         table_name = 'stock_min'
     elif frequency in ['auction', 'call_auction']:
         table_name = 'call_auction'
+    elif frequency in ['trade_days']:
+        table_name = 'trade_days'
     else:
         raise NotImplementedError
+
+    if is_valid_date(start_time) and is_valid_date(end_time):
+        if table_name == 'trade_days':
+            try:
+                time.strptime(start_time, "%Y-%m-%d")
+            except ValueError:
+                start_time = start_time[:10]
+                end_time = end_time[:10]
+        else:
+            try:
+                time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                start_time = start_time + ' 09:00:00'
+                end_time = end_time + ' 17:00:00'
+    #  判断日期合法
+    if start_time > end_time:
+        raise ValueError('开始时间大于结束时间')
 
     client = Client(host=config.clickhouse_IP, database=database)
 
@@ -232,6 +257,10 @@ def query_clickhouse(code: list = None,
     else:
         sql = "SELECT x.* FROM %s x" % table_name + " WHERE `datetime` >= %(start_time)s \
                                 AND `datetime` <= %(end_time)s ORDER BY (`datetime`, `code`)"
+
+        if table_name == 'trade_days':
+            sql = "SELECT x.* FROM %s x" % table_name + " WHERE `datetime` >= %(start_time)s \
+                                    AND `datetime` <= %(end_time)s ORDER BY (`datetime`)"
 
         res_tuple_list = client.execute(sql, {
             'start_time': start_time,
@@ -279,11 +308,6 @@ def query_N_clickhouse(count: int,
     NotImplementedError
         [description]
     """
-    if is_valid_date(end_time):
-        try:
-            time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            end_time = end_time + ' 17:00:00'
 
     if frequency in ['day', 'daily', 'd']:
         table_name = 'stock_day'
@@ -291,8 +315,22 @@ def query_N_clickhouse(count: int,
         table_name = 'stock_min'
     elif frequency in ['auction', 'call_auction']:
         table_name = 'call_auction'
+    elif frequency in ['trade_days']:
+        table_name = 'trade_days'
     else:
         raise NotImplementedError
+    if is_valid_date(end_time):
+        if table_name == 'trade_days':
+            try:
+                time.strptime(end_time, "%Y-%m-%d")
+            except ValueError:
+                end_time = end_time[:10]
+        else:
+            try:
+                time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                if table_name != 'trade_days':
+                    end_time = end_time + ' 17:00:00'
 
     client = Client(host=config.clickhouse_IP, database=database)
     # DESC 降序
@@ -308,17 +346,13 @@ def query_N_clickhouse(count: int,
             'code': code,
             'limit': count,
         })
-    elif end_time:
-        sql = "SELECT x.* FROM %s x " % table_name + " WHERE `datetime` <= %(end_time)s \
-        ORDER BY (`datetime`, `code`) DESC LIMIT %(limit)s by `code`"
-
-        res_tuple_list = client.execute(sql, {
-            'end_time': end_time,
-            'limit': count,
-        })
     else:
         sql = "SELECT x.* FROM %s x " % table_name + " WHERE `datetime` <= %(end_time)s \
         ORDER BY (`datetime`, `code`) DESC LIMIT %(limit)s by `code`"
+
+        if table_name == 'trade_days':
+            sql = "SELECT x.* FROM %s x" % table_name + " WHERE `datetime` <= %(end_time)s \
+            ORDER BY (`datetime`) DESC LIMIT %(limit)s"
 
         res_tuple_list = client.execute(sql, {
             'end_time': end_time,
@@ -335,7 +369,10 @@ def query_N_clickhouse(count: int,
 
 if __name__ == '__main__':
     client = Client(host=config.clickhouse_IP, database='test')
-    print((query_N_clickhouse(10, ['000001', '000002'], end_time='2021-05-20')))
+    # print((query_N_clickhouse(10, ['000001', '000002'], end_time='2021-05-20')))
     # query_exist_max_datetime(type='trade_days', client=client)
     # create_clickhouse_table('trade_days', client)
-    # print(len(query_clickhouse(code=['000001','000002'],start_time=None)))
+    print((query_N_clickhouse(count=3,
+                              end_time='2020-03-01',
+                              frequency='trade_days',
+                              database='test')))

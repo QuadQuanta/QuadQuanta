@@ -21,8 +21,8 @@ from QuadQuanta.data.data_trans import pd_to_tuplelist
 from QuadQuanta.config import config
 from QuadQuanta.data.clickhouse_api import (create_clickhouse_database,
                                             create_clickhouse_table,
-                                            insert_clickhouse)
-from QuadQuanta.data.get_data import get_jq_bars, get_trade_days
+                                            drop_click_table, insert_clickhouse)
+from QuadQuanta.data.get_data import get_jq_bars, get_jq_trade_days, get_trade_days
 from QuadQuanta.utils.datetime_func import is_valid_date
 from tqdm import tqdm
 
@@ -95,7 +95,8 @@ def save_bars(start_time='2014-01-01',
 
     # 竞价数据，按日期保存
     elif frequency in ['auction', 'call_auction']:
-        date_range = pd.date_range(start_time[:10], end_time[:10], freq='D')
+        # 从交易日历获取交易日期
+        date_range = get_trade_days(start_time, end_time)
         for i in tqdm(range(len(date_range))):
             try:
                 insert_clickhouse(
@@ -106,31 +107,39 @@ def save_bars(start_time='2014-01-01',
                                 client=client), frequency, client)
             # TODO log输出
             except Exception as e:
-                print(f"{code_list[i]}:error:{e}")
+                print(f"{date_range[i]}:error:{e}")
                 # raise Exception('Insert acution error', str(date_range[i])[:10])
                 continue
     else:
         raise NotImplementedError
 
 
-def save_trade_days(start_time=None, end_time=None, database=None):
-    jq.auth(config.jqusername, config.jqpasswd)
+def save_trade_days(database='jqdata'):
+    """
+    从聚宽数据源更新交易日历
+
+    Parameters
+    ----------
+    database : str, optional
+        database名称, by default 'jqdata'
+    """
     # 强制转换start_time, end_time时间改为9:00:00和17:00
     client = Client(host=config.clickhouse_IP)
     create_clickhouse_database(database, client)
     client = Client(host=config.clickhouse_IP, database=database)
+    # 删除原表, 重新更新
+    drop_click_table('trade_days', client)
     create_clickhouse_table('trade_days', client)
-    insert_clickhouse(
-        pd_to_tuplelist(get_trade_days(start_time, end_time), 'trade_days'),
-        'trade_days', client)
+    insert_clickhouse(pd_to_tuplelist(get_jq_trade_days(), 'trade_days'),
+                      'trade_days', client)
 
 
 if __name__ == '__main__':
     # save_all_jqdata('2014-01-01 09:00:00',
     #                 '2021-05-08 17:00:00',
     #                 frequency='daily')
-    save_bars('2014-05-21 09:00:00',
-              '2014-05-22 17:00:00',
-              frequency='minute',
-              database='test')
-    # save_trade_days(database='test')
+    # save_bars('2014-05-21 09:00:00',
+    #           '2014-05-22 17:00:00',
+    #           frequency='minute',
+    #           database='test')
+    save_trade_days(database='jqdata')
