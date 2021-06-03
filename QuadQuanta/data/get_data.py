@@ -281,8 +281,64 @@ def get_click_bars(code=None,
             return res
 
 
-def get_trade_days(start_time=None, end_time=None):
-    if start_time or end_time:
+def get_trade_days(start_time=None,
+                   end_time=None,
+                   datasource=DataSource.CLICKHOUSE,
+                   **kwargs):
+    """
+    统一的交易日历获取函数, 默认从clickhouse数据库获取
+
+    Parameters
+    ----------
+    start_time : str, optional
+        开始时间, by default None
+    end_time : str, optional
+        结束时间, by default None
+    datasource : DataSource, optional
+        数据源, by default DataSource.CLICKHOUSE
+    kwargs: dict, optional
+        额外可选参数, 包括count:设置时间序列个数, database:设置clickhouse的database名称
+
+    Returns
+    -------
+    [type]
+        [description]
+
+    Raises
+    ------
+    NotImplementedError
+        [description]
+    """
+    if datasource == DataSource.JQDATA:
+        return get_jq_trade_days(start_time=start_time,
+                                 end_time=end_time,
+                                 **kwargs)
+    elif datasource == DataSource.CLICKHOUSE:
+        return get_click_trade_days(start_time, end_time=end_time, **kwargs)
+    else:
+        raise NotImplementedError
+
+
+def get_jq_trade_days(start_time=None, end_time=None, **kwargs):
+    """
+    获取指定时间段内的聚宽交易日历
+
+    Parameters
+    ----------
+    start_time : str, optional
+        开始日期, by default None
+    end_time : str, optional
+        结束日期, by default None
+
+    Returns
+    -------
+    DataFrame
+        可通过format参数指定输出格式, 默认pandas.DataFrame
+    """
+    jq.auth(config.jqusername, config.jqpasswd)
+
+    if (start_time and is_valid_date(start_time)) and (end_time and
+                                                       is_valid_date(end_time)):
         trade_days = jq.get_trade_days(start_time, end_time)
     else:
         trade_days = jq.get_all_trade_days()
@@ -291,11 +347,46 @@ def get_trade_days(start_time=None, end_time=None):
     return pd_data.assign(date=pd_data['datetime'].apply(lambda x: str(x)))
 
 
+def get_click_trade_days(start_time=None, end_time=None, count=None, **kwargs):
+    """
+    从clickhouse数据库获取指定时间段交易日历, 当count不为空时start_time变量无效
+
+    Parameters
+    ----------
+    start_time : str, optional
+        开始日期, by default None
+    end_time : str, optional
+        结束日期, by default None
+    count : int, optional
+        时间序列个数, by default None
+
+    Returns
+    -------
+    list
+        返回字符串交易日期列表
+    """
+    frequency = 'trade_days'
+    if count:
+        res = query_N_clickhouse(count=count,
+                                 end_time=end_time,
+                                 frequency=frequency,
+                                 **kwargs)
+        return res['date']
+    else:
+        res = query_clickhouse(start_time=start_time,
+                               end_time=end_time,
+                               frequency=frequency,
+                               **kwargs)
+        return res['date']
+
+
 if __name__ == '__main__':
-    print(
-        get_bars(['000001', '000002'],
-                 '2020-01-01',
-                 '2020-02-01',
-                 'daily',
-                 DataSource.CLICKHOUSE,
-                 format='pd'))
+    # print(
+    #     get_bars(['000001', '000002'],
+    #              '2020-01-01',
+    #              '2020-02-01',
+    #              'daily',
+    #              DataSource.CLICKHOUSE,
+    #              format='pd'))
+    # print(get_jq_trade_days(None, '2020-01-01'))
+    print(get_trade_days('2020-01-01 09:00:00', '2020-02-03 17:00:00'))
