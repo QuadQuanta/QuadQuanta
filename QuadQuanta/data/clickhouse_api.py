@@ -19,6 +19,7 @@ from clickhouse_driver import Client
 from QuadQuanta.data.data_trans import tuplelist_to_np
 from QuadQuanta.config import config
 from QuadQuanta.utils.common import removeDuplicates
+from QuadQuanta.utils.datetime_func import is_valid_date
 
 
 def create_clickhouse_database(database: str,
@@ -193,19 +194,15 @@ def query_clickhouse(code: list = None,
         [description]
     """
 
-    try:
-        time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-    except ValueError:
-        start_time = start_time + ' 09:00:00'
-        end_time = end_time + ' 17:00:00'
+    if is_valid_date(start_time) and is_valid_date(end_time):
+        try:
+            time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            start_time = start_time + ' 09:00:00'
+            end_time = end_time + ' 17:00:00'
     #  判断日期合法
-    try:
-        time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-        time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
-        if start_time > end_time:
-            raise ValueError
-    except ValueError:
-        print("输入日期不合法或开始时间大于结束时间")
+    if start_time > end_time:
+        raise ValueError('开始时间大于结束时间')
 
     if frequency in ['day', 'daily', 'd']:
         table_name = 'stock_day'
@@ -282,16 +279,11 @@ def query_N_clickhouse(count: int,
     NotImplementedError
         [description]
     """
-
-    try:
-        time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
-    except ValueError:
-        end_time = end_time + ' 17:00:00'
-
-    try:
-        time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
-    except ValueError:
-        raise ValueError('非法日期格式')
+    if is_valid_date(end_time):
+        try:
+            time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            end_time = end_time + ' 17:00:00'
 
     if frequency in ['day', 'daily', 'd']:
         table_name = 'stock_day'

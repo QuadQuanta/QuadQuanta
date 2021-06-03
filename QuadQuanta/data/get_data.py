@@ -11,6 +11,7 @@
 '''
 
 # here put the import lib
+import time
 import datetime
 
 import jqdatasdk as jq
@@ -18,7 +19,7 @@ import pandas as pd
 from QuadQuanta.config import config
 from QuadQuanta.data.clickhouse_api import query_exist_max_datetime, query_clickhouse, query_N_clickhouse
 from QuadQuanta.data.data_trans import pd_to_tuplelist, tuplelist_to_np
-from QuadQuanta.utils.datetime_func import datetime_convert_stamp
+from QuadQuanta.utils.datetime_func import datetime_convert_stamp, is_valid_date
 from QuadQuanta.const import *
 
 
@@ -113,7 +114,13 @@ def get_jq_bars(code=None,
     if isinstance(code, str):
         code = list(map(str.strip, code.split(',')))
     if len(code) == 0:
-        raise ValueError
+        raise ValueError('股票代码格式错误')
+    if is_valid_date(start_time) and is_valid_date(end_time):
+        try:
+            time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            start_time = start_time + ' 09:00:00'
+            end_time = end_time + ' 17:00:00'
 
     columns = [
         'time', 'code', 'open', 'close', 'high', 'low', 'volume', 'money',

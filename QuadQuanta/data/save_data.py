@@ -11,6 +11,7 @@
 '''
 
 import datetime
+import time
 # here put the import lib
 
 import jqdatasdk as jq
@@ -22,6 +23,7 @@ from QuadQuanta.data.clickhouse_api import (create_clickhouse_database,
                                             create_clickhouse_table,
                                             insert_clickhouse)
 from QuadQuanta.data.get_data import get_jq_bars, get_trade_days
+from QuadQuanta.utils.datetime_func import is_valid_date
 from tqdm import tqdm
 
 
@@ -47,22 +49,24 @@ def save_bars(start_time='2014-01-01',
     create_clickhouse_database(database, client)
     client = Client(host=config.clickhouse_IP, database=database)
 
-    start_time = start_time[:10] + ' 09:00:00'
+    if is_valid_date(start_time) and is_valid_date(end_time):
+        try:
+            time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            start_time = start_time + ' 09:00:00'
+            end_time = end_time + ' 17:00:00'
     current_hour = datetime.datetime.now().hour
     today = datetime.datetime.today()
     # 交易日收盘前更新,只更新到昨日数据
     if current_hour < 16 and str(today)[:10] <= end_time[:10]:
         end_time = str(today - datetime.timedelta(1))[:10]
-    end_time = end_time[:10] + ' 17:00:00'
+        end_time = end_time[:10] + ' 17:00:00'
 
     # 表不存在则创建相应表
     create_clickhouse_table(frequency, client)
     # 这种方式获取股票列表会有NAN数据，且需要转换股票代码格式
     stock_pd = jq.get_all_securities().assign(code=lambda x: x.index)
     code_list = stock_pd['code'].apply(lambda x: str(x)[:6]).unique().tolist()
-
-    if end_time < start_time:
-        raise ValueError  # 终止日期小于开始日期
 
     # 日线级别数据保存，全部一起获取
     if frequency in ['d', 'daily', 'day']:
