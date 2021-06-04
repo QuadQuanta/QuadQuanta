@@ -16,7 +16,7 @@ import pandas as pd
 
 def date_convert_stamp(date):
     """
-    转换日期时间字符串为浮点数的时间戳
+    转换日期字符串为浮点数的时间戳
 
     Parameters
     ----------
@@ -46,20 +46,14 @@ def datetime_convert_stamp(time_):
     float
         浮点数时间戳
     """
-    if len(str(time_)) == 10:
-        # yyyy-mm-dd格式
-        return time.mktime(time.strptime(time_, '%Y-%m-%d'))
-    elif len(str(time_)) == 16:
-        # yyyy-mm-dd hh:mm格式
-        return time.mktime(time.strptime(time_, '%Y-%m-%d %H:%M'))
-    else:
-        timestr = str(time_)[0:19]
-        return time.mktime(time.strptime(timestr, '%Y-%m-%d %H:%M:%S'))
+    datetimestr = pd.Timestamp(time_).strftime("%Y-%m-%d %H:%M:%S")
+    date_stamp = time.mktime(time.strptime(datetimestr, '%Y-%m-%d %H:%M:%S'))
+    return date_stamp
 
 
 def is_valid_date(strdate):
     """
-    判断字符传日期是否合法
+    判断字符串日期是否合法
 
     Parameters
     ----------
@@ -69,12 +63,8 @@ def is_valid_date(strdate):
     Returns
     -------
     bool
-        日期合法返回True
+        日期合法返回True,日期非法则返回False
 
-    Raises
-    ------
-    ValueError
-        日期非法则抛出ValueError
     """
     try:
         if ':' in strdate:
@@ -83,7 +73,7 @@ def is_valid_date(strdate):
             time.strptime(strdate, "%Y-%m-%d")
         return True
     except:
-        raise ValueError('非法日期格式')
+        return False
 
 
 if __name__ == '__main__':
