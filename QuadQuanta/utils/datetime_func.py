@@ -28,8 +28,8 @@ def date_convert_stamp(date):
         [description]
     """
     datestr = pd.Timestamp(date).strftime("%Y-%m-%d")
-    date = time.mktime(time.strptime(datestr, '%Y-%m-%d'))
-    return date
+    date_stamp = time.mktime(time.strptime(datestr, '%Y-%m-%d'))
+    return date_stamp
 
 
 def datetime_convert_stamp(time_):

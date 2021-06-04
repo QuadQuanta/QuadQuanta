@@ -18,7 +18,7 @@ import numpy as np
 from clickhouse_driver import Client
 from QuadQuanta.data.data_trans import tuplelist_to_np
 from QuadQuanta.config import config
-from QuadQuanta.utils.common import removeDuplicates
+from QuadQuanta.utils.common import removeDuplicates, is_sorted
 from QuadQuanta.utils.datetime_func import is_valid_date
 
 
@@ -56,7 +56,6 @@ def create_clickhouse_table(type: str,
     NotImplementedError
         [description]
     """
-    # TODO 用枚举类型重构
     if type in ['min', 'minute', '1min']:
         create_table_sql = 'CREATE TABLE IF NOT EXISTS stock_min (datetime DateTime,code String, open Float32, \
                            close Float32,high Float32,low Float32, volume Float64, amount Float64,avg Float32,  \
@@ -268,9 +267,11 @@ def query_clickhouse(code: list = None,
         })
     #  TODO clickhouse分片
 
-    # TODO 判读tuple_list是否有序
     # 默认有序条件下删除res_tuple_list重复数据
-    res_tuple_list = removeDuplicates(res_tuple_list)
+    if is_sorted(res_tuple_list):
+        res_tuple_list = removeDuplicates(res_tuple_list)
+    else:
+        raise Exception('clickhouse返回列表非有序')
     # 元组数组通过numpy结构化,注意数据长度code:8字符 date:10字符.可能存在问题
 
     return tuplelist_to_np(res_tuple_list, table_name)
@@ -361,7 +362,10 @@ def query_N_clickhouse(count: int,
     # 将倒序列表翻转
     # 默认有序条件下删除res_tuple_list重复数据
     res_tuple_list.reverse()
-    res_tuple_list = removeDuplicates(res_tuple_list)
+    if is_sorted(res_tuple_list):
+        res_tuple_list = removeDuplicates(res_tuple_list)
+    else:
+        raise Exception('clickhouse返回列表非有序')
     # 元组数组通过numpy结构化,注意数据长度code:8字符 date:10字符.可能存在问题
 
     return tuplelist_to_np(res_tuple_list, table_name)
@@ -372,7 +376,8 @@ if __name__ == '__main__':
     # print((query_N_clickhouse(10, ['000001', '000002'], end_time='2021-05-20')))
     # query_exist_max_datetime(type='trade_days', client=client)
     # create_clickhouse_table('trade_days', client)
-    print((query_N_clickhouse(count=3,
-                              end_time='2020-03-01',
-                              frequency='trade_days',
+    print((query_clickhouse(start_time='2021-05-20',
+                              end_time='2021-06-01',
+                              frequency='daily',
                               database='test')))
+    # insert_clickhouse()
