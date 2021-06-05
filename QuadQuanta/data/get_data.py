@@ -20,6 +20,7 @@ from QuadQuanta.config import config
 from QuadQuanta.data.clickhouse_api import query_exist_max_datetime, query_clickhouse, query_N_clickhouse
 from QuadQuanta.data.data_trans import pd_to_tuplelist, tuplelist_to_np
 from QuadQuanta.utils.datetime_func import datetime_convert_stamp, is_valid_date
+from QuadQuanta.utils.logs import logger
 from QuadQuanta.const import *
 
 
@@ -277,7 +278,7 @@ def get_click_bars(code=None,
             else:
                 return res
         except Exception as e:
-            print(e)
+            logger.warning(e)
             return res
 
 
