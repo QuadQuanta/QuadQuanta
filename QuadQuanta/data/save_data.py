@@ -24,6 +24,7 @@ from QuadQuanta.data.clickhouse_api import (create_clickhouse_database,
                                             drop_click_table, insert_clickhouse)
 from QuadQuanta.data.get_data import get_jq_bars, get_jq_trade_days, get_trade_days
 from QuadQuanta.utils.datetime_func import is_valid_date
+from QuadQuanta.utils.logs import logger
 from tqdm import tqdm
 
 
@@ -89,7 +90,7 @@ def save_bars(start_time='2014-01-01',
                                 client=client), frequency, client)
             # TODO log输出
             except Exception as e:
-                print(f"{code_list[i]}:error:{e}")
+                logger.warning(f"{code_list[i]}:error:{e}")
                 # raise Exception('Insert minute data error', code_list[i])
                 continue
 
@@ -107,7 +108,7 @@ def save_bars(start_time='2014-01-01',
                                 client=client), frequency, client)
             # TODO log输出
             except Exception as e:
-                print(f"{date_range[i]}:error:{e}")
+                logger.warning(f"{date_range[i]}:error:{e}")
                 # raise Exception('Insert acution error', str(date_range[i])[:10])
                 continue
     else:
