@@ -44,7 +44,6 @@ def save_bars(start_time='2014-01-01',
     frequency : str, optional
         数据频率, by default 'daily'
     """
-    jq.auth(config.jqusername, config.jqpasswd)
     # 强制转换start_time, end_time时间改为9:00:00和17:00
     client = Client(host=config.clickhouse_IP)
     create_clickhouse_database(database, client)
@@ -139,8 +138,8 @@ if __name__ == '__main__':
     # save_all_jqdata('2014-01-01 09:00:00',
     #                 '2021-05-08 17:00:00',
     #                 frequency='daily')
-    # save_bars('2014-05-21 09:00:00',
-    #           '2014-05-22 17:00:00',
-    #           frequency='minute',
-    #           database='test')
-    save_trade_days(database='jqdata')
+    save_bars('2014-05-21 09:00:00',
+              '2014-05-22 17:00:00',
+              frequency='daily',
+              database='test')
+    # save_trade_days(database='test')
