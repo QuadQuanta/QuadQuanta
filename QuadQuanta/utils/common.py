@@ -20,7 +20,7 @@ def removeDuplicates(duplist):
     Parameters
     ----------
     duplist : list
-        [description]
+        待去重的有序列表
 
     Returns
     -------
@@ -37,6 +37,34 @@ def removeDuplicates(duplist):
             slow += 1
         fast += 1
     return duplist[:slow]
+
+
+def is_sorted(lst):
+    """
+    判断列表或字符串是否有序,不论升序还是降序
+
+    Parameters
+    ----------
+    lst : list or str
+        待判断的列表或字符串
+
+    Returns
+    -------
+    bool
+        有序返回True, 无序返回False
+
+    Raises
+    ------
+    NotImplementedError
+        [description]
+    """
+    if isinstance(lst, list) or isinstance(lst, str):
+        if len(lst) <= 1:
+            return True
+        return all(x <= y for x, y in zip(lst, lst[1:])) or all(
+            x >= y for x, y in zip(lst, lst[1:]))
+    else:
+        raise NotImplementedError
 
 
 if __name__ == '__main__':
