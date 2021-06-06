@@ -11,6 +11,7 @@
 '''
 
 # here put the import lib
+import time
 import datetime
 
 import jqdatasdk as jq
@@ -18,8 +19,11 @@ import pandas as pd
 from QuadQuanta.config import config
 from QuadQuanta.data.clickhouse_api import query_exist_max_datetime, query_clickhouse, query_N_clickhouse
 from QuadQuanta.data.data_trans import pd_to_tuplelist, tuplelist_to_np
-from QuadQuanta.utils.datetime_func import datetime_convert_stamp
+from QuadQuanta.utils.datetime_func import datetime_convert_stamp, is_valid_date
+from QuadQuanta.utils.logs import logger
 from QuadQuanta.const import *
+
+jq.auth(config.jqusername, config.jqpasswd)
 
 
 def get_bars(code=None,
@@ -109,11 +113,16 @@ def get_jq_bars(code=None,
         [description]
     """
 
-    jq.auth(config.jqusername, config.jqpasswd)
     if isinstance(code, str):
         code = list(map(str.strip, code.split(',')))
     if len(code) == 0:
-        raise ValueError
+        raise ValueError('股票代码格式错误')
+    if is_valid_date(start_time) and is_valid_date(end_time):
+        try:
+            time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            start_time = start_time + ' 09:00:00'
+            end_time = end_time + ' 17:00:00'
 
     columns = [
         'time', 'code', 'open', 'close', 'high', 'low', 'volume', 'money',
@@ -270,12 +279,67 @@ def get_click_bars(code=None,
             else:
                 return res
         except Exception as e:
-            print(e)
+            logger.warning(e)
             return res
 
 
-def get_trade_days(start_time=None, end_time=None):
-    if start_time or end_time:
+def get_trade_days(start_time=None,
+                   end_time=None,
+                   datasource=DataSource.CLICKHOUSE,
+                   **kwargs):
+    """
+    统一的交易日历获取函数, 默认从clickhouse数据库获取
+
+    Parameters
+    ----------
+    start_time : str, optional
+        开始时间, by default None
+    end_time : str, optional
+        结束时间, by default None
+    datasource : DataSource, optional
+        数据源, by default DataSource.CLICKHOUSE
+    kwargs: dict, optional
+        额外可选参数, 包括count:设置时间序列个数, database:设置clickhouse的database名称
+
+    Returns
+    -------
+    [type]
+        [description]
+
+    Raises
+    ------
+    NotImplementedError
+        [description]
+    """
+    if datasource == DataSource.JQDATA:
+        return get_jq_trade_days(start_time=start_time,
+                                 end_time=end_time,
+                                 **kwargs)
+    elif datasource == DataSource.CLICKHOUSE:
+        return get_click_trade_days(start_time, end_time=end_time, **kwargs)
+    else:
+        raise NotImplementedError
+
+
+def get_jq_trade_days(start_time=None, end_time=None, **kwargs):
+    """
+    获取指定时间段内的聚宽交易日历
+
+    Parameters
+    ----------
+    start_time : str, optional
+        开始日期, by default None
+    end_time : str, optional
+        结束日期, by default None
+
+    Returns
+    -------
+    DataFrame
+        可通过format参数指定输出格式, 默认pandas.DataFrame
+    """
+
+    if (start_time and is_valid_date(start_time)) and (end_time and
+                                                       is_valid_date(end_time)):
         trade_days = jq.get_trade_days(start_time, end_time)
     else:
         trade_days = jq.get_all_trade_days()
@@ -284,11 +348,100 @@ def get_trade_days(start_time=None, end_time=None):
     return pd_data.assign(date=pd_data['datetime'].apply(lambda x: str(x)))
 
 
+def get_click_trade_days(start_time=None, end_time=None, count=None, **kwargs):
+    """
+    从clickhouse数据库获取指定时间段交易日历, 当count不为空时start_time变量无效
+
+    Parameters
+    ----------
+    start_time : str, optional
+        开始日期, by default None
+    end_time : str, optional
+        结束日期, by default None
+    count : int, optional
+        时间序列个数, by default None
+
+    Returns
+    -------
+    list
+        返回字符串交易日期列表
+    """
+    frequency = 'trade_days'
+    if count:
+        res = query_N_clickhouse(count=count,
+                                 end_time=end_time,
+                                 frequency=frequency,
+                                 **kwargs)
+        return res['date']
+    else:
+        res = query_clickhouse(start_time=start_time,
+                               end_time=end_time,
+                               frequency=frequency,
+                               **kwargs)
+        return res['date']
+
+
+# TODO 获取复权因子
+def get_adjust_factor(code,
+                      start_date,
+                      end_date,
+                      adj_type='pre',
+                      datasource=DataSource.JQDATA):
+    """
+    获取股票复权因子
+
+    Parameters
+    ----------
+    code : list or str
+        六位数字股票代码列表，如['000001'],['000001',...,'003039'],str会强制转换为list
+    start_date : str
+        开始日期
+    end_date : str
+        结束日期
+    adj_type : str
+        复权类型, 不复权为None, 前复权pre, 后复权post
+    datasource : DataSource, optional
+        数据源, by default DataSource.JQDATA
+
+    Returns
+    -------
+    [type]
+        [description]
+
+    Raises
+    ------
+    ValueError
+        [description]
+    NotImplementedError
+        [description]
+    """
+    if isinstance(code, str):
+        code = list(map(str.strip, code.split(',')))
+    if len(code) == 0:
+        raise ValueError('股票代码格式错误')
+
+    if datasource == DataSource.JQDATA:
+        return jq.get_price(jq.normalize_code(code),
+                            start_date=start_date,
+                            end_date=end_date,
+                            fields=['factor'],
+                            fq=adj_type)
+    else:
+        raise NotImplementedError
+
+
 if __name__ == '__main__':
+    # print(
+    #     get_bars(['000001', '000002'],
+    #              '2020-01-01',
+    #              '2020-02-01',
+    #              'daily',
+    #              DataSource.CLICKHOUSE,
+    #              format='pd'))
+    # print(get_jq_trade_days(None, '2020-01-01'))
+    # print(get_trade_days('2020-01-01 09:00:00', '2020-02-03 17:00:00'))
     print(
-        get_bars(['000001', '000002'],
-                 '2020-01-01',
-                 '2020-02-01',
-                 'daily',
-                 DataSource.CLICKHOUSE,
-                 format='pd'))
+        get_adjust_factor(['000001'],
+                          '2020-01-01',
+                          '2020-02-01',
+                          adj_type='pre'))

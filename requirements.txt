@@ -4,3 +4,4 @@ pandas
 numpy
 clickhouse_driver
 PyYAML
+loguru

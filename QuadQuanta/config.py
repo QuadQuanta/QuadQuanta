@@ -2,6 +2,7 @@ import os
 import sys
 
 import yaml
+from QuadQuanta.utils.logs import logger
 
 
 class Config():
@@ -17,7 +18,7 @@ class Config():
                 return yaml.safe_load(f.read())
         except:
             with open(self.path + 'config.yaml', 'a+') as f:
-                print(f"创建配置文件成功, 请配置后运行")
+                logger.info(f"创建配置文件成功, 请配置后运行")
                 sys.exit()
 
     @property
