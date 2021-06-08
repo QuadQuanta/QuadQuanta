@@ -15,15 +15,13 @@ import uuid
 
 
 class Position():
-    def __init__(
-        self,
-        code='000001',
-        volume_long_today=0,
-        volume_long_history=0,
-        position_cost=0,
-        volume_long_frozen=0,
-        positon_id=None,
-    ):
+    def __init__(self,
+                 code='000001',
+                 volume_long_today=0,
+                 volume_long_history=0,
+                 position_cost=0,
+                 volume_long_frozen=0,
+                 positon_id=None):
         """
         持仓模型初始化
         """
@@ -42,6 +40,8 @@ class Position():
         self.last_price = 0  # 持仓最新价格
         # 开仓总成本
         self.open_cost = 0
+
+        self.datetime = ""
 
     def __repr__(self) -> str:
         return 'Positon: {} volume: {} avaliable:{} cost_price:{} mark_value:{} float_profit:{}'.format(
@@ -112,11 +112,11 @@ class Position():
         收盘后结算
         """
         self.volume_long_history += self.volume_long_today
-        self.volume_long_history += self.volume_short_today
+        self.volume_short_history += self.volume_short_today
         self.volume_long_today = 0
         self.volume_short_today = 0
 
-    def update_pos(self, price, volume, order_direction):
+    def update_pos(self, price, update_time):
         """
         股票更新仓位
 
@@ -124,10 +124,24 @@ class Position():
         ----------
         price : [type]
             [description]
-        volume : [type]
-            [description]
-        order_direction : [type]
+        update_time : [type]
             [description]
         """
         self.on_price_change(price)
-        temp_cost = int(volume)*price
+        self.datetime = update_time
+        # temp_cost = int(volume) * price
+
+    @property
+    def static_message(self):
+        return {
+            'code': self.code,
+            'position_id': self.position_id,
+            'last_updatetime': str(self.datetime),
+            # 持仓字段
+            'volume_long_today': int(self.volume_long_today),
+            'volume_long_his': int(self.volume_long_history),
+            'volume_long': int(self.volume_long),
+            'cost_price': self.cost_price,
+            'float_profit': self.float_profit,
+            'profit_ratio': self.profit_ratio
+        }
