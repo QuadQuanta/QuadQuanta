@@ -14,6 +14,7 @@
 import uuid
 
 from QuadQuanta.portfolio.position import Position
+from QuadQuanta.data.mongodb_api import insert_mongodb
 
 
 class Account():
@@ -24,7 +25,10 @@ class Account():
                  passwd=None,
                  model='backtest',
                  init_cash=100000,
-                 account_id=None):
+                 account_id=None,
+                 mongo_db='QuadQuanta',
+                 mongo_col='account',
+                 solid=False):
         self.init_cash = init_cash
         self.username = username
         self.passwd = passwd
@@ -40,6 +44,11 @@ class Account():
         self.datetime = ""
         self.account_id = str(
             uuid.uuid4()) if account_id is None else account_id
+        # mongodb数据库名和集合名
+        self.mongo_db = mongo_db
+        self.mongo_col = mongo_col
+        # 是否固化到mongodb选项
+        self.solid = solid
 
     def __repr__(self) -> str:
         return 'print account'
@@ -277,7 +286,12 @@ class Account():
             'orders': self.orders,
         }
 
+    def save_account_section(self):
+        insert_mongodb(self.mongo_db, self.mongo_col, self.account_section)
+
     def settle(self):
+        if self.solid:
+            self.save_account_section()
         self.orders = {}
         for item in self.positions.values():
             item.settle()
@@ -299,7 +313,6 @@ if __name__ == "__main__":
                          order_time='2020-01-10 09:33:00')
     acc.make_deal(od2)
     print(acc.positions_msg)
-    print(f"account --- {acc.account_section}")
     acc.settle()
     # print(pos)
     od3 = acc.send_order('000001',

@@ -11,6 +11,7 @@
 '''
 
 # here put the import lib
+from QuadQuanta.portfolio.account import Account
 import numpy as np
 from QuadQuanta.data.clickhouse_api import query_clickhouse
 from tqdm import tqdm
@@ -24,7 +25,15 @@ class BaseStrategy():
                  code=None,
                  start_date=None,
                  end_date=None,
-                 frequency='day'):
+                 frequency='daily',
+                 username='quadquanta',
+                 passwd='quadquanta',
+                 model='backtest',
+                 init_cash=10000,
+                 account_id=None,
+                 mongo_db='QuadQuanta',
+                 mongo_col='account',
+                 solid=False):
         self.start_date = start_date
         self.end_date = end_date
         self.frequency = frequency
@@ -34,6 +43,16 @@ class BaseStrategy():
         self.trading_date = np.sort(np.unique(self.day_data['date']))
         self.trading_datetime = np.sort(np.unique(self.day_data['datetime']))
         self.init()
+        self.acc = Account(
+            username,
+            passwd,
+            model,
+            init_cash,
+            account_id,
+            mongo_db,
+            mongo_col,
+            solid,
+        )
 
     def init(self):
         """
@@ -59,12 +78,6 @@ class BaseStrategy():
             date = self.trading_date[i]
             self.today_data = self.day_data[self.day_data['date'] == date]
             self.on_bar(self.today_data)
-    # TODO
-    async def asyn_backtest(self):
-        """
-        异步回测
-        """
-        raise NotImplementedError
 
 
 if __name__ == '__main__':
