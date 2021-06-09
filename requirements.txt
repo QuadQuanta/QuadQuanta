@@ -5,3 +5,5 @@ numpy
 clickhouse_driver
 PyYAML
 loguru
+pymongo
+matplotlib
