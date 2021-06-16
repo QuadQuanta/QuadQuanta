@@ -21,7 +21,7 @@ from QuadQuanta.data.data_trans import pd_to_tuplelist
 from QuadQuanta.config import config
 from QuadQuanta.data.clickhouse_api import (create_clickhouse_database,
                                             create_clickhouse_table,
-                                            drop_click_table, insert_clickhouse)
+                                            drop_click_table, insert_clickhouse,query_exist_max_datetime)
 from QuadQuanta.data.get_data import get_jq_bars, get_jq_trade_days, get_trade_days
 from QuadQuanta.utils.datetime_func import is_valid_date
 from QuadQuanta.utils.logs import logger
@@ -68,50 +68,59 @@ def save_bars(start_time='2014-01-01',
     stock_pd = jq.get_all_securities().assign(code=lambda x: x.index)
     code_list = stock_pd['code'].apply(lambda x: str(x)[:6]).unique().tolist()
 
-    # 日线级别数据保存，全部一起获取
-    if frequency in ['d', 'daily', 'day']:
-        insert_clickhouse(
-            get_jq_bars(code_list,
-                        start_time,
-                        end_time,
-                        frequency,
-                        client=client), frequency, client)
 
-    # 分钟级别数据保存，每个股票单独保存
-    elif frequency in ['mim', 'minute']:
-        for i in tqdm(range(len(code_list))):
-            try:
-                insert_clickhouse(
-                    get_jq_bars(code_list[i],
-                                start_time,
-                                end_time,
-                                frequency,
-                                client=client), frequency, client)
-            # TODO log输出
-            except Exception as e:
-                logger.warning(f"{code_list[i]}:error:{e}")
-                # raise Exception('Insert minute data error', code_list[i])
-                continue
-
-    # 竞价数据，按日期保存
-    elif frequency in ['auction', 'call_auction']:
-        # 从交易日历获取交易日期
-        date_range = get_trade_days(start_time, end_time)
-        for i in tqdm(range(len(date_range))):
-            try:
-                insert_clickhouse(
-                    get_jq_bars(code_list,
-                                str(date_range[i])[:10],
-                                str(date_range[i])[:10],
-                                frequency,
-                                client=client), frequency, client)
-            # TODO log输出
-            except Exception as e:
-                logger.warning(f"{date_range[i]}:error:{e}")
-                # raise Exception('Insert acution error', str(date_range[i])[:10])
-                continue
+    exist_max_datetime = query_exist_max_datetime(code_list, frequency,client)[0][0]
+    # 从最大datetime的次日开始
+    if str(exist_max_datetime) > config.start_date:  # 默认'2014-01-01'
+        _start_time = str(exist_max_datetime + datetime.timedelta(hours=18))
     else:
-        raise NotImplementedError
+        if start_time <= config.start_date:  # 默认'2014-01-01'
+            start_time = config.start_date + ' 9:00:00'
+        _start_time = start_time
+    if _start_time <= end_time:
+        # 日线级别数据保存，全部一起获取
+        if frequency in ['d', 'daily', 'day']:
+            insert_clickhouse(
+                get_jq_bars(code_list,
+                            _start_time,
+                            end_time,
+                            frequency), frequency, client)
+
+        # 分钟级别数据保存，每个股票单独保存
+        elif frequency in ['mim', 'minute']:
+            for i in tqdm(range(len(code_list))):
+                try:
+                    insert_clickhouse(
+                        get_jq_bars(code_list[i],
+                                    _start_time,
+                                    end_time,
+                                    frequency), frequency, client)
+                # TODO log输出
+                except Exception as e:
+                    logger.warning(f"{code_list[i]}:error:{e}")
+                    # raise Exception('Insert minute data error', code_list[i])
+                    continue
+
+        # 竞价数据，按日期保存
+        elif frequency in ['auction', 'call_auction']:
+            # 从交易日历获取交易日期
+            date_range = get_trade_days(_start_time, end_time)
+            for i in tqdm(range(len(date_range))):
+                try:
+                    insert_clickhouse(
+                        get_jq_bars(code_list,
+                                    str(date_range[i])[:10],
+                                    str(date_range[i])[:10],
+                                    frequency), frequency, client)
+                # TODO log输出
+                except Exception as e:
+                    logger.warning(f"{date_range[i]}:error:{e}")
+                    # raise Exception('Insert acution error', str(date_range[i])[:10])
+                    continue
+        else:
+            raise NotImplementedError
+    else:
+        raise Exception('开始日期大于结束日期')
 
 
 def save_trade_days(database='jqdata'):
@@ -138,8 +147,12 @@ if __name__ == '__main__':
     # save_all_jqdata('2014-01-01 09:00:00',
     #                 '2021-05-08 17:00:00',
     #                 frequency='daily')
-    save_bars('2014-05-21 09:00:00',
-              '2014-05-22 17:00:00',
-              frequency='daily',
-              database='test')
+    # save_bars('2014-01-01 09:00:00',
+    #           '2015-01-01 17:00:00',
+    #           frequency='auction',
+    #           database='test')
+    save_bars('2014-01-01 09:00:00',
+              '2016-01-01 17:00:00',
+              frequency='auction',
+              database='jqdata')
     # save_trade_days(database='test')
