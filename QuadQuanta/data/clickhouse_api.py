@@ -10,7 +10,6 @@
 @Desc    :   clickhouse接口
 '''
 
-import asyncio
 import time
 
 # here put the import lib
@@ -377,7 +376,7 @@ if __name__ == '__main__':
     # query_exist_max_datetime(type='trade_days', client=client)
     # create_clickhouse_table('trade_days', client)
     print((query_clickhouse(start_time='2021-05-20',
-                              end_time='2021-06-01',
-                              frequency='daily',
-                              database='test')))
+                            end_time='2021-06-01',
+                            frequency='daily',
+                            database='test')))
     # insert_clickhouse()

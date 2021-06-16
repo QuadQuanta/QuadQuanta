@@ -29,7 +29,7 @@ class BaseStrategy():
                  username='quadquanta',
                  passwd='quadquanta',
                  model='backtest',
-                 init_cash=10000,
+                 init_cash=100000,
                  account_id=None,
                  mongo_db='QuadQuanta',
                  mongo_col='account',
@@ -62,7 +62,7 @@ class BaseStrategy():
 
     def on_bar(self, bars):
         """
-        
+        策略函数
         """
         raise NotImplementedError
 

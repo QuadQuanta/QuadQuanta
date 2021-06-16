@@ -1,3 +1,17 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+'''
+@File    :   config.py
+@Time    :   2021/06/15
+@Author  :   levonwoo
+@Version :   0.1
+@Contact :   
+@License :   (C)Copyright 2020-2021
+@Desc    :   None
+'''
+
+# here put the import lib
+
 import os
 import sys
 
@@ -16,9 +30,9 @@ class Config():
         try:
             with open(self.path + 'config.yaml', 'r') as f:
                 return yaml.safe_load(f.read())
-        except:
+        except IOError:
             with open(self.path + 'config.yaml', 'a+') as f:
-                logger.info(f"创建配置文件成功, 请配置后运行")
+                logger.info("创建配置文件成功, 请配置后运行")
                 sys.exit()
 
     @property
