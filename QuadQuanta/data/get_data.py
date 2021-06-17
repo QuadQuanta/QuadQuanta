@@ -12,18 +12,15 @@
 
 # here put the import lib
 import time
-import datetime
 
 import jqdatasdk as jq
 import pandas as pd
-from QuadQuanta.config import config
+from QuadQuanta.const import *
 from QuadQuanta.data.clickhouse_api import query_clickhouse, query_N_clickhouse
 from QuadQuanta.data.data_trans import pd_to_tuplelist, tuplelist_to_np
-from QuadQuanta.utils.datetime_func import datetime_convert_stamp, is_valid_date
+from QuadQuanta.utils.datetime_func import (datetime_convert_stamp,
+                                            is_valid_date)
 from QuadQuanta.utils.logs import logger
-from QuadQuanta.const import *
-
-jq.auth(config.jqusername, config.jqpasswd)
 
 
 def get_bars(code=None,
