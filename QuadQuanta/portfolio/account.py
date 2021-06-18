@@ -141,7 +141,7 @@ class Account():
             if self.available_cash >= volume * price:  # 可用资金大于买入需要资金
                 volume = volume
             else:
-                volume = 100 * self.available_cash // (100 * price)
+                volume = 100 * int(self.available_cash // (100 * price))
             amount = volume * price * (1 + self.handle_fee)
             pos.frozen_cash += amount
             # 可用现金减少
