@@ -14,19 +14,21 @@
 import uuid
 
 from QuadQuanta.portfolio.position import Position
+from QuadQuanta.data.mongodb_api import insert_mongodb
 
 
 class Account():
     """[summary]
     """
-
-    def __init__(
-            self,
-            username=None,
-            passwd=None,
-            model='backtest',
-            init_cash=100000,
-    ):
+    def __init__(self,
+                 username=None,
+                 passwd=None,
+                 model='backtest',
+                 init_cash=100000,
+                 account_id=None,
+                 mongo_db='QuadQuanta',
+                 mongo_col='account',
+                 solid=False):
         self.init_cash = init_cash
         self.username = username
         self.passwd = passwd
@@ -39,6 +41,15 @@ class Account():
         # 手续费
         self.handle_fee = 0.0001
 
+        self.datetime = ""
+        self.account_id = str(
+            uuid.uuid4()) if account_id is None else account_id
+        # mongodb数据库名和集合名
+        self.mongo_db = mongo_db
+        self.mongo_col = mongo_col
+        # 是否固化到mongodb选项
+        self.solid = solid
+
     def __repr__(self) -> str:
         return 'print account'
 
@@ -48,7 +59,8 @@ class Account():
 
     @property
     def frozen_cash(self):
-        return sum([position.frozen_cash for position in self.positions.values()])
+        return sum(
+            [position.frozen_cash for position in self.positions.values()])
 
     @property
     def float_profit(self):
@@ -81,7 +93,7 @@ class Account():
                    price,
                    order_direction,
                    order_id=None,
-                   datetime=None):
+                   order_time=None):
         """[summary]
         下单函数
         Parameters
@@ -94,12 +106,14 @@ class Account():
             价格
         order_direction : [type]
             买入/卖出
-        datetime : [type]
+        order_time : [type]
             下单时间
         """
+        if order_time:
+            self.datetime = order_time
         order_id = str(uuid.uuid4()) if order_id == None else order_id
         checked_order = self.order_check(code, volume, price, order_direction)
-        checked_order['order_time'] = datetime
+        checked_order['order_time'] = order_time
         checked_order['order_id'] = order_id
         self.orders[order_id] = checked_order
         return checked_order
@@ -122,12 +136,12 @@ class Account():
 
         """
         pos = self.get_position(code)
-        pos.on_price_change(price)
+        pos.update_pos(price, self.datetime)
         if order_direction == 'buy':
             if self.available_cash >= volume * price:  # 可用资金大于买入需要资金
                 volume = volume
             else:
-                volume = 100 * self.available_cash // (100 * price)
+                volume = 100 * int(self.available_cash // (100 * price))
             amount = volume * price * (1 + self.handle_fee)
             pos.frozen_cash += amount
             # 可用现金减少
@@ -210,7 +224,8 @@ class Account():
                               trade_volume=order['volume'],
                               trade_amount=order['amount'],
                               order_direction=order['direction'],
-                              order_id=order['order_id'])
+                              order_id=order['order_id'],
+                              order_time=order['order_time'])
 
     def process_deal(self,
                      code,
@@ -219,9 +234,10 @@ class Account():
                      trade_amount,
                      order_direction,
                      order_id=None,
+                     order_time=None,
                      trade_id=None):
         pos = self.get_position(code)
-        pos.on_price_change(trade_price)
+        pos.update_pos(trade_price, order_time)
         if order_id in self.orders.keys():
             #
             order = self.orders[order_id]
@@ -237,7 +253,6 @@ class Account():
             elif order_direction == "sell":
                 # 冻结持仓转换为可用资金
                 pos.volume_short_frozen -= trade_volume
-                pos.volume_long_history -= trade_volume
                 pos.volume_short_today += trade_volume
                 self.available_cash += trade_amount
 
@@ -246,7 +261,38 @@ class Account():
             else:
                 raise NotImplementedError
 
+    @property
+    def account_info(self):
+        return {
+            'cash': self.total_cash,
+            'market_value': self.total_market_value,
+            'assert': self.total_assets
+        }
+
+    @property
+    def positions_msg(self):
+        return [
+            position.static_message for position in self.positions.values()
+            if position.volume_long + position.volume_short_today > 0
+        ]
+
+    @property
+    def account_section(self):
+        return {
+            'account_id': self.account_id,
+            'date': self.datetime,
+            'account': self.account_info,
+            'positions': self.positions_msg,
+            'orders': self.orders,
+        }
+
+    def save_account_section(self):
+        insert_mongodb(self.mongo_db, self.mongo_col, self.account_section)
+
     def settle(self):
+        if self.solid:
+            self.save_account_section()
+        self.orders = {}
         for item in self.positions.values():
             item.settle()
 
@@ -257,25 +303,26 @@ if __name__ == "__main__":
                         100,
                         12,
                         'buy',
-                        datetime='2020-01-10 09:32:00')
+                        order_time='2020-01-10 09:32:00')
     acc.make_deal(od)
-    od2 = acc.send_order('000001',
+
+    od2 = acc.send_order('000002',
                          100,
                          12,
                          'buy',
-                         datetime='2020-01-10 09:33:00')
+                         order_time='2020-01-10 09:33:00')
     acc.make_deal(od2)
-    pos = acc.get_position()
-    pos.on_price_change(13)
-
+    print(acc.positions_msg)
     acc.settle()
-    print(pos)
+    # print(pos)
     od3 = acc.send_order('000001',
                          100,
                          14,
                          'sell',
-                         datetime='2020-01-10 09:34:00')
+                         order_time='2020-01-11 09:34:00')
     acc.make_deal(od3)
-    print(pos)
-    print(acc.total_market_value)
-    print(acc.total_assets)
+
+    acc.settle()
+    print(acc.positions_msg)
+    # print(pos)
+    # print(acc.total_market_value)

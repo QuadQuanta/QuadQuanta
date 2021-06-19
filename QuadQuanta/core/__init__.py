@@ -11,4 +11,3 @@
 '''
 
 # here put the import lib
-from QuadQuanta.core.strategy import *

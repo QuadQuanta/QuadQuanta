@@ -1,7 +1,7 @@
 # -*-coding:utf-8-*-
 
-from os.path import dirname, join
-import io, re
+import io
+import re
 # from pip.req import parse_requirements
 
 from setuptools import (
@@ -24,7 +24,9 @@ setup(
     version=VERSION,
     description='To build a quantification system',  # 描述
     long_description='try to build a personal trading system',
-    packages=find_packages(where='.', exclude=(["QuadQuanta.strategy"]), include=('*', )),
+    packages=find_packages(where='.',
+                           exclude=(["QuadQuanta.strategy"]),
+                           include=('*', )),
     author=AUTHOR,
     author_email='',
     license='MIT license',
@@ -32,7 +34,7 @@ setup(
     url=URL,
     include_package_data=True,
     install_requires=INSTALL_REQUIRES,
-    exclude_package_data={'':['SRS.md']},
+    exclude_package_data={'': ['SRS.md']},
     zip_safe=False,
     classifiers=[
         'Programming Language :: Python',

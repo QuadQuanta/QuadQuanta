@@ -24,14 +24,9 @@ def update_day_bar(frequency='daily', database='jqdata'):
     save_bars(start_time, end_time, frequency=frequency, database=database)
 
 
-
 if __name__ == '__main__':
     # update_day_bar()
     update_day_bar('auction', 'test')
-
-    # TODO 第一次存分钟数据注意关注聚宽流量，所取分钟数据大于剩余流量可能会发生未知错误
-    # start_time = config.start_date + ' 09:00:00'
-    # # end_time = str(today) + ' 17:00:00'
     #
     # end_time = str(datetime.datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S') + datetime.timedelta(days=15, hours=8))
     # save_all_jqdata(start_time,
