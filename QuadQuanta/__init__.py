@@ -12,5 +12,6 @@
 
 # here put the import lib
 from QuadQuanta.config import *
-__version__ = '0.2.4'
+
+__version__ = '0.2.6'
 __author__ = 'levonwoo'

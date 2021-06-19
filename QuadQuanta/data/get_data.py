@@ -257,7 +257,7 @@ def get_click_bars(code=None,
             else:
                 return res
         except Exception as e:
-            logger.warning(e)
+            logger.debug(e)
             return res
 
 

@@ -375,8 +375,9 @@ if __name__ == '__main__':
     # print((query_N_clickhouse(10, ['000001', '000002'], end_time='2021-05-20')))
     # query_exist_max_datetime(type='trade_days', client=client)
     # create_clickhouse_table('trade_days', client)
-    print((query_clickhouse(start_time='2021-05-20',
-                            end_time='2021-06-01',
-                            frequency='daily',
-                            database='test')))
+    print((query_clickhouse(code=['000001'],
+                            start_time='2014-05-20',
+                            end_time='2014-05-20',
+                            frequency='minute',
+                            database='jqdata')))
     # insert_clickhouse()
