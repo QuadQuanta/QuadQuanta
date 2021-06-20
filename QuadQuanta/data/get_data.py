@@ -11,6 +11,7 @@
 '''
 
 # here put the import lib
+from QuadQuanta import config
 import time
 
 import jqdatasdk as jq
@@ -294,7 +295,9 @@ def get_trade_days(start_time=None,
                                  end_time=end_time,
                                  **kwargs)
     elif datasource == DataSource.CLICKHOUSE:
-        return get_click_trade_days(start_time, end_time=end_time, **kwargs)
+        return get_click_trade_days(start_time=start_time,
+                                    end_time=end_time,
+                                    **kwargs)
     else:
         raise NotImplementedError
 
@@ -326,7 +329,10 @@ def get_jq_trade_days(start_time=None, end_time=None, **kwargs):
     return pd_data.assign(date=pd_data['datetime'].apply(lambda x: str(x)))
 
 
-def get_click_trade_days(start_time=None, end_time=None, count=None, **kwargs):
+def get_click_trade_days(start_time=config.start_date,
+                         end_time=None,
+                         count=None,
+                         **kwargs):
     """
     从clickhouse数据库获取指定时间段交易日历, 当count不为空时start_time变量无效
 
@@ -341,8 +347,8 @@ def get_click_trade_days(start_time=None, end_time=None, count=None, **kwargs):
 
     Returns
     -------
-    list
-        返回字符串交易日期列表
+    np.ndarry
+        返回字符串交易日期numpy列表
     """
     frequency = 'trade_days'
     if count:
