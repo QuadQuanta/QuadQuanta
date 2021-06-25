@@ -19,6 +19,7 @@ from QuadQuanta.config import config
 from QuadQuanta.data.clickhouse_api import (create_clickhouse_database,
                                             create_clickhouse_table,
                                             drop_click_table, insert_clickhouse,
+                                            query_exist_date,
                                             query_exist_max_datetime)
 from QuadQuanta.data.data_trans import pd_to_tuplelist
 from QuadQuanta.data.get_data import (get_jq_bars, get_jq_trade_days,
@@ -30,22 +31,35 @@ from tqdm import tqdm
 # here put the import lib
 
 
-def save_bars(start_time='2014-01-01',
+def save_bars(start_time=config.start_date,
               end_time='2014-01-10',
               frequency='daily',
-              database='jqdata'):
+              database='jqdata',
+              continued=True):
     """
     保存起始时间内所有聚宽股票数据到clickhouse
 
     Parameters
     ----------
-    start_time : str
-        开始时间
-    end_time : str, 
-        结束时间
+    start_time : str, optional
+        开始时间, by default config.start_date
+    end_time : str, optional
+        结束时间, by default '2014-01-10'
     frequency : str, optional
         数据频率, by default 'daily'
+    database : str, optional
+        数据库名, by default 'jqdata'
+    continued : bool, optional
+        是否接着最大日期更新, by default True
+
+    Raises
+    ------
+    Exception
+        [description]
+    Exception
+        [description]
     """
+
     # 强制转换start_time, end_time时间改为9:00:00和17:00
     client = Client(host=config.clickhouse_IP)
     create_clickhouse_database(database, client)
@@ -70,27 +84,27 @@ def save_bars(start_time='2014-01-01',
     stock_pd = jq.get_all_securities().assign(code=lambda x: x.index)
     code_list = stock_pd['code'].apply(lambda x: str(x)[:6]).unique().tolist()
 
-    exist_max_datetime = query_exist_max_datetime(code_list, frequency,
-                                                  client)[0][0]
-    # 从最大datetime的次日开始
-    if str(exist_max_datetime) > config.start_date:  # 默认'2014-01-01'
-        _start_time = str(exist_max_datetime + datetime.timedelta(hours=18))
-    else:
-        if start_time <= config.start_date:  # 默认'2014-01-01'
-            start_time = config.start_date + ' 9:00:00'
-        _start_time = start_time
-    if _start_time <= end_time:
-        # 日线级别数据保存，全部一起获取
-        if frequency in ['d', 'daily', 'day']:
-            insert_clickhouse(
-                get_jq_bars(code_list, _start_time, end_time, frequency),
-                frequency, client)
+    if continued:
+        exist_max_datetime = query_exist_max_datetime(code_list, frequency,
+                                                      client)[0][0]
 
-        # 竞价和分钟数据按日期保存
-        elif frequency in ['auction', 'call_auction', 'min', 'minute']:
-            # 从交易日历获取交易日期
-            date_range = get_trade_days(_start_time, end_time)
-            for i in tqdm(range(len(date_range))):
+        # 从最大datetime的次日开始
+        if str(exist_max_datetime) > config.start_date:  # 默认'2014-01-01'
+            start_time = str(exist_max_datetime + datetime.timedelta(hours=18))
+        else:
+            if start_time <= config.start_date:  # 默认'2014-01-01'
+                start_time = config.start_date + ' 9:00:00'
+            start_time = start_time
+
+    if start_time <= end_time:
+        date_range = get_trade_days(start_time, end_time)
+        exist_date_range = query_exist_date(start_time=start_time,
+                                            end_time=end_time,
+                                            frequency=frequency,
+                                            client=client)
+        for i in tqdm(range(len(date_range))):
+            if date_range[i] not in exist_date_range:
+                # 分钟数据查询剩余流量
                 if frequency in ['min', 'minute']:
                     spare_jqdata = jq.get_query_count()['spare']
                     if spare_jqdata // (240 * len(code_list)) < 1:
@@ -106,8 +120,6 @@ def save_bars(start_time='2014-01-01',
                     logger.warning(f"{date_range[i]}:error:{e}")
                     # raise Exception('Insert acution error', str(date_range[i])[:10])
                     continue
-        else:
-            raise NotImplementedError
     else:
         raise Exception('日期段数据已保存或开始日期大于结束日期')
 
@@ -141,8 +153,8 @@ if __name__ == '__main__':
     #           frequency='auction',
     #           database='test')
     save_bars('2021-01-01 09:00:00',
-              '2021-01-15 17:00:00',
-              frequency='minute',
-              database='jqdata_test')
+              '2021-06-01 17:00:00',
+              frequency='daily',
+              database='test')
 
     # save_trade_days(database='test')
