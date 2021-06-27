@@ -120,6 +120,9 @@ def get_jq_bars(code=None,
             time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
         except ValueError:
             start_time = start_time + ' 09:00:00'
+        try:
+            time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
             end_time = end_time + ' 17:00:00'
 
     columns = [

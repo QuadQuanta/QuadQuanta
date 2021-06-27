@@ -59,24 +59,36 @@ def save_bars(start_time=config.start_date,
     Exception
         [description]
     """
+    if is_valid_date(start_time) and is_valid_date(end_time):
+        pass
 
     # 强制转换start_time, end_time时间改为9:00:00和17:00
     client = Client(host=config.clickhouse_IP)
     create_clickhouse_database(database, client)
     client = Client(host=config.clickhouse_IP, database=database)
 
-    if is_valid_date(start_time) and is_valid_date(end_time):
-        try:
-            time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            start_time = start_time + ' 09:00:00'
-            end_time = end_time + ' 17:00:00'
     current_hour = datetime.datetime.now().hour
     today = datetime.datetime.today()
     # 交易日收盘前更新,只更新到昨日数据
-    if current_hour < 16 and str(today)[:10] <= end_time[:10]:
-        end_time = str(today - datetime.timedelta(1))[:10]
-        end_time = end_time[:10] + ' 17:00:00'
+    if str(today)[:10] <= end_time[:10]:
+        end_time = str(today)[:10]
+        if current_hour < 16:
+            end_time = str(today - datetime.timedelta(1))[:10]
+
+    # 统一日期格式
+    try:
+        time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        start_time = start_time + ' 09:00:00'
+    try:
+        time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        end_time = end_time + ' 17:00:00'
+
+
+    # if current_hour < 16 and str(today)[:10] <= end_time[:10]:
+    #     end_time = str(today - datetime.timedelta(1))[:10]
+    #     end_time = end_time[:10] + ' 17:00:00'
 
     # 表不存在则创建相应表
     create_clickhouse_table(frequency, client)
@@ -153,8 +165,8 @@ if __name__ == '__main__':
     #           frequency='auction',
     #           database='test')
     save_bars('2021-01-01 09:00:00',
-              '2021-06-01 17:00:00',
-              frequency='daily',
-              database='test')
+              '2021-06-30 17:00:00',
+              frequency='minute',
+              database='jqdata_test')
 
     # save_trade_days(database='test')
