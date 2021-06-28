@@ -115,6 +115,7 @@ def save_bars(start_time=config.start_date,
                                             frequency=frequency,
                                             client=client)
         for i in tqdm(range(len(date_range))):
+            time.sleep(0.1)
             if date_range[i] not in exist_date_range:
                 # 分钟数据查询剩余流量
                 if frequency in ['min', 'minute']:
@@ -164,9 +165,9 @@ if __name__ == '__main__':
     #           '2015-01-01 17:00:00',
     #           frequency='auction',
     #           database='test')
-    save_bars('2021-01-01 09:00:00',
-              '2021-06-30 17:00:00',
+    save_bars('2020-02-01 09:00:00',
+              '2021-01-01 17:00:00',
               frequency='minute',
-              database='jqdata_test')
+              database='jqdata_test',continued=False)
 
     # save_trade_days(database='test')
