@@ -71,8 +71,12 @@ start_date: '2014-01-01'
 jqdata:
   username: 'yourusername' 
   passwd: 'yourpasswd'
-# clickhouse服务端地址
-clickhouse_IP: '127.0.0.1'
+# clickhouse配置
+clickhouse:
+  ip: '127.0.0.1'
+  user: 'default'
+  password: 'yourpasswrod'
+
 ```
 
 修改`config.yaml`文件`start_date`项可修改开始时间，参考聚宽数据源的最早数据时间
