@@ -17,16 +17,16 @@ from QuadQuanta.config import config
 from QuadQuanta.data.save_data import save_bars
 
 
-def update_day_bar(frequency='daily', database='jqdata'):
+def update_day_bar(frequency='daily', database='jqdata',start_time = config.start_date):
     today = datetime.date.today()
-    start_time = config.start_date + ' 09:00:00'
+    start_time = start_time + ' 09:00:00'
     end_time = str(today) + ' 17:00:00'
     save_bars(start_time, end_time, frequency=frequency, database=database)
 
 
 if __name__ == '__main__':
     # update_day_bar()
-    update_day_bar('auction', 'test')
+    update_day_bar('daily', 'test',start_time='2021-01-01')
     #
     # end_time = str(datetime.datetime.strptime(start_time, '%Y-%m-%d %H:%M:%S') + datetime.timedelta(days=15, hours=8))
     # save_all_jqdata(start_time,

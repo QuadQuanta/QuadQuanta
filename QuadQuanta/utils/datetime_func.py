@@ -72,10 +72,11 @@ def is_valid_date(strdate):
         else:
             time.strptime(strdate, "%Y-%m-%d")
         return True
-    except:
-        return False
+    except Exception as e:
+        raise e
+        # return False
 
 
 if __name__ == '__main__':
-    if is_valid_date('2030-01-01') and is_valid_date('2021-0-03'):
+    if is_valid_date('2030-01-01') and is_valid_date('2021-06-31'):
         print('a')
