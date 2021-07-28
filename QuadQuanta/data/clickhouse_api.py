@@ -241,7 +241,7 @@ def query_exist_date(code=None,
     if code:
         if isinstance(code, str):
             code = list(map(str.strip, code.split(',')))
-        sql = "SELECT x.date FROM %s x" % table_name + " WHERE `date` >= %(start_time)s AND `date` <= %(end_time)s AND `code` IN %(code)s ORDER BY (`date`)"
+        sql = "SELECT DISTINCT x.date FROM %s x" % table_name + " WHERE `date` >= %(start_time)s AND `date` <= %(end_time)s AND `code` IN %(code)s ORDER BY (`date`)"
         # 查询,返回数据类型为元组数组
         res_tuple_list = client.execute(sql, {
             'start_time': start_time,
@@ -249,20 +249,14 @@ def query_exist_date(code=None,
             'code': code
         })
     else:
-        sql = "SELECT x.date FROM %s x" % table_name + " WHERE `date` >= %(start_time)s AND `date` <= %(end_time)s  ORDER BY (`date`)"
+        sql = "SELECT DISTINCT x.date FROM %s x" % table_name + " WHERE `date` >= %(start_time)s AND `date` <= %(end_time)s  ORDER BY (`date`)"
         res_tuple_list = client.execute(sql, {
             'start_time': start_time,
             'end_time': end_time,
         })
-
-    # TODO 去重
-    if is_sorted(res_tuple_list):
-        res_tuple_list = removeDuplicates(res_tuple_list)
-    else:
-        raise Exception('clickhouse返回列表非有序')
-
-    # return reduce(operator.add, np.array(res_tuple_list).tolist())
-    return list(chain(*np.array(res_tuple_list).tolist()))
+    # tuple_list转list
+    res = list(chain(*np.array(res_tuple_list).tolist()))
+    return res
 
 
 def query_clickhouse(code: list = None,
@@ -333,7 +327,7 @@ def query_clickhouse(code: list = None,
             # TODO 是否是有效的股票代码
             code = list(map(str.strip, code.split(',')))
         # 注意WHERE前的空格
-        sql = "SELECT x.* FROM %s x" % table_name + " WHERE `datetime` >= %(start_time)s \
+        sql = "SELECT DISTINCT x.* FROM %s x" % table_name + " WHERE `datetime` >= %(start_time)s \
                         AND `datetime` <= %(end_time)s AND `code` IN %(code)s ORDER BY (`datetime`, `code`)"
 
         # 查询,返回数据类型为元组数组
@@ -343,11 +337,11 @@ def query_clickhouse(code: list = None,
             'code': code
         })
     else:
-        sql = "SELECT x.* FROM %s x" % table_name + " WHERE `datetime` >= %(start_time)s \
+        sql = "SELECT DISTINCT x.* FROM %s x" % table_name + " WHERE `datetime` >= %(start_time)s \
                                 AND `datetime` <= %(end_time)s ORDER BY (`datetime`, `code`)"
 
         if table_name == 'trade_days':
-            sql = "SELECT x.* FROM %s x" % table_name + " WHERE `datetime` >= %(start_time)s \
+            sql = "SELECT DISTINCT x.* FROM %s x" % table_name + " WHERE `datetime` >= %(start_time)s \
                                     AND `datetime` <= %(end_time)s ORDER BY (`datetime`)"
 
         res_tuple_list = client.execute(sql, {
@@ -357,10 +351,11 @@ def query_clickhouse(code: list = None,
     #  TODO clickhouse分片
 
     # 默认有序条件下删除res_tuple_list重复数据
-    if is_sorted(res_tuple_list):
-        res_tuple_list = removeDuplicates(res_tuple_list)
-    else:
-        raise Exception('clickhouse返回列表非有序')
+    # if is_sorted(res_tuple_list):
+    #     res_tuple_list = removeDuplicates(res_tuple_list)
+    # else:
+    #     raise Exception('clickhouse返回列表非有序')
+
     # 元组数组通过numpy结构化,注意数据长度code:8字符 date:10字符.可能存在问题
 
     return tuplelist_to_np(res_tuple_list, table_name)
@@ -427,7 +422,7 @@ def query_N_clickhouse(count: int,
     if code:
         if isinstance(code, str):
             code = list(map(str.strip, code.split(',')))
-        sql = "SELECT x.* FROM %s x" % table_name + " WHERE `datetime` <= %(end_time)s \
+        sql = "SELECT DISTINCT x.* FROM %s x" % table_name + " WHERE `datetime` <= %(end_time)s \
         AND `code` IN %(code)s ORDER BY (`datetime`, `code`) DESC LIMIT %(limit)s by `code`"
 
         # 查询,返回数据类型为元组数组
@@ -437,11 +432,11 @@ def query_N_clickhouse(count: int,
             'limit': count,
         })
     else:
-        sql = "SELECT x.* FROM %s x " % table_name + " WHERE `datetime` <= %(end_time)s \
+        sql = "SELECT DISTINCT x.* FROM %s x " % table_name + " WHERE `datetime` <= %(end_time)s \
         ORDER BY (`datetime`, `code`) DESC LIMIT %(limit)s by `code`"
 
         if table_name == 'trade_days':
-            sql = "SELECT x.* FROM %s x" % table_name + " WHERE `datetime` <= %(end_time)s \
+            sql = "SELECT DISTINCT x.* FROM %s x" % table_name + " WHERE `datetime` <= %(end_time)s \
             ORDER BY (`datetime`) DESC LIMIT %(limit)s"
 
         res_tuple_list = client.execute(sql, {
@@ -449,12 +444,12 @@ def query_N_clickhouse(count: int,
             'limit': count,
         })
     # 将倒序列表翻转
-    # 默认有序条件下删除res_tuple_list重复数据
     res_tuple_list.reverse()
-    if is_sorted(res_tuple_list):
-        res_tuple_list = removeDuplicates(res_tuple_list)
-    else:
-        raise Exception('clickhouse返回列表非有序')
+    # 默认有序条件下删除res_tuple_list重复数据
+    # if is_sorted(res_tuple_list):
+    #     res_tuple_list = removeDuplicates(res_tuple_list)
+    # else:
+    #     raise Exception('clickhouse返回列表非有序')
     # 元组数组通过numpy结构化,注意数据长度code:8字符 date:10字符.可能存在问题
 
     return tuplelist_to_np(res_tuple_list, table_name)
@@ -462,17 +457,15 @@ def query_N_clickhouse(count: int,
 
 if __name__ == '__main__':
     client = Client(host=config.clickhouse_IP, database='jqdata')
-    # print((query_exist_date(
-    #                         start_time='2020-01-01',
+    # print((query_exist_date(start_time='2020-01-01',
     #                         end_time='2020-05-01',
     #                         client=client)))
     # print((query_N_clickhouse(2, '000001', end_time='2021-05-20')))
-    print(query_exist_max_datetime(code=['000001'], type='daily',
-                                   client=client))
+    # print(query_exist_max_datetime(code=['000001'], type='daily',
+    #                                client=client))
     # create_clickhouse_table('trade_days', client)
-    # print((query_clickhouse(code=['000001'],
-    #                         start_time='2014-05-20',
-    #                         end_time='2014-05-20',
-    #                         frequency='minute',
-    #                         database='jqdata')))
+    print((query_clickhouse(start_time='2014-05-20',
+                            end_time='2014-05-20',
+                            frequency='minute',
+                            database='jqdata')))
     # insert_clickhouse()
