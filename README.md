@@ -85,6 +85,8 @@ clickhouse:
 
 `./QuadQuanta/examples/stock_picking.py`文件为一个简易的选股示例
 
+`./QuadQuanta/examples/DoubleMA.py`是一个简单的双均线策略示例
+
 ### 数据字段
 
 #### 日线，分钟线
