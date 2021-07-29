@@ -20,7 +20,7 @@
 
 ### 安装clickhouse
 
-参考clickhouse官网，暂时未设置用户名，密码认证
+参考clickhouse官网，用户名，密码可自行设置
 
 ### 安装QuadQuanta
 
@@ -55,7 +55,7 @@ python -m pip install -e .
 #### 下载源码
 
 ```
-git clone https://github.com/levonwoo/QuadQuanta.git
+git clone https://github.com/QuadQuanta/QuadQuanta.git
 ```
 
 #### 更新数据
@@ -75,7 +75,7 @@ jqdata:
 clickhouse:
   ip: '127.0.0.1'
   user: 'default'
-  password: 'yourpasswrod'
+  password: 'yourpasswrod' #无密码则为''
 
 ```
 
