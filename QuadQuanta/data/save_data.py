@@ -63,9 +63,14 @@ def save_bars(start_time=config.start_date,
         pass
 
     # 强制转换start_time, end_time时间改为9:00:00和17:00
-    client = Client(host=config.clickhouse_IP)
+    client = Client(host=config.clickhouse_IP,
+                    user=config.clickhouse_user,
+                    password=config.clickhouse_password)
     create_clickhouse_database(database, client)
-    client = Client(host=config.clickhouse_IP, database=database)
+    client = Client(host=config.clickhouse_IP,
+                    user=config.clickhouse_user,
+                    password=config.clickhouse_password,
+                    database=database)
 
     current_hour = datetime.datetime.now().hour
     today = datetime.datetime.today()
@@ -84,7 +89,6 @@ def save_bars(start_time=config.start_date,
         time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
     except ValueError:
         end_time = end_time + ' 17:00:00'
-
 
     # if current_hour < 16 and str(today)[:10] <= end_time[:10]:
     #     end_time = str(today - datetime.timedelta(1))[:10]
@@ -115,7 +119,7 @@ def save_bars(start_time=config.start_date,
                                             frequency=frequency,
                                             client=client)
         for i in tqdm(range(len(date_range))):
-            time.sleep(0.1)
+            time.sleep(0.05)
             if date_range[i] not in exist_date_range:
                 # 分钟数据查询剩余流量
                 if frequency in ['min', 'minute']:
@@ -147,9 +151,15 @@ def save_trade_days(database='jqdata'):
         database名称, by default 'jqdata'
     """
     # 强制转换start_time, end_time时间改为9:00:00和17:00
-    client = Client(host=config.clickhouse_IP)
+    client = Client(host=config.clickhouse_IP,
+                    user=config.clickhouse_user,
+                    password=config.clickhouse_password)
     create_clickhouse_database(database, client)
-    client = Client(host=config.clickhouse_IP, database=database)
+    client = Client(host=config.clickhouse_IP,
+                    user=config.clickhouse_user,
+                    password=config.clickhouse_password,
+                    database=database)
+
     # 删除原表, 重新更新
     drop_click_table('trade_days', client)
     create_clickhouse_table('trade_days', client)
@@ -165,9 +175,10 @@ if __name__ == '__main__':
     #           '2015-01-01 17:00:00',
     #           frequency='auction',
     #           database='test')
-    save_bars('2020-02-01 09:00:00',
+    save_bars('2020-05-01 09:00:00',
               '2021-01-01 17:00:00',
               frequency='minute',
-              database='jqdata_test',continued=False)
+              database='jqdata_test',
+              continued=False)
 
     # save_trade_days(database='test')

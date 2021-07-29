@@ -225,6 +225,8 @@ def query_exist_date(code=None,
         table_name = 'stock_min'
     elif frequency in ['auction', 'call_auction']:
         table_name = 'call_auction'
+    elif frequency in ['limit']:
+        table_name = 'stock_day_limit'
     else:
         raise NotImplementedError
 
@@ -320,7 +322,10 @@ def query_clickhouse(code: list = None,
     if start_time > end_time:
         raise ValueError('开始时间大于结束时间')
 
-    client = Client(host=config.clickhouse_IP, database=database)
+    client = Client(host=config.clickhouse_IP,
+                    user=config.clickhouse_user,
+                    password=config.clickhouse_password,
+                    database=database)
 
     if code:
         if isinstance(code, str):
@@ -417,7 +422,10 @@ def query_N_clickhouse(count: int,
                 if table_name != 'trade_days':
                     end_time = end_time + ' 17:00:00'
 
-    client = Client(host=config.clickhouse_IP, database=database)
+    client = Client(host=config.clickhouse_IP,
+                    user=config.clickhouse_user,
+                    password=config.clickhouse_password,
+                    database=database)
     # DESC 降序
     if code:
         if isinstance(code, str):
@@ -453,6 +461,62 @@ def query_N_clickhouse(count: int,
     # 元组数组通过numpy结构化,注意数据长度code:8字符 date:10字符.可能存在问题
 
     return tuplelist_to_np(res_tuple_list, table_name)
+
+
+def query_limit_count(code: list = None,
+                      start_time: str = '1970-01-01',
+                      end_time: str = '2200-01-01',
+                      table_name='stock_day_limit',
+                      database='jqdata_test') -> np.ndarray:
+    if is_valid_date(start_time) and is_valid_date(end_time):
+        try:
+            time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            start_time = start_time + ' 09:00:00'
+            end_time = end_time + ' 17:00:00'
+    #  判断日期合法
+    if start_time > end_time:
+        raise ValueError('开始时间大于结束时间')
+
+    client = Client(host=config.clickhouse_IP,
+                    user=config.clickhouse_user,
+                    password=config.clickhouse_password,
+                    database=database)
+
+    if code:
+        if isinstance(code, str):
+            # TODO 是否是有效的股票代码
+            code = list(map(str.strip, code.split(',')))
+        # 注意WHERE前的空格
+        sql = "SELECT x.* FROM %s x" % table_name + " WHERE `datetime` >= %(start_time)s \
+                        AND `datetime` <= %(end_time)s AND `code` IN %(code)s ORDER BY (`datetime`, `code`)"
+
+        # 查询,返回数据类型为元组数组
+        res_tuple_list = client.execute(sql, {
+            'start_time': start_time,
+            'end_time': end_time,
+            'code': code
+        })
+    else:
+        sql = "SELECT x.* FROM %s x" % table_name + " WHERE `datetime` >= %(start_time)s \
+                                AND `datetime` <= %(end_time)s ORDER BY (`datetime`, `code`)"
+
+        res_tuple_list = client.execute(sql, {
+            'start_time': start_time,
+            'end_time': end_time
+        })
+    #  TODO clickhouse分片
+
+    # 默认有序条件下删除res_tuple_list重复数据
+    if is_sorted(res_tuple_list):
+        res_tuple_list = removeDuplicates(res_tuple_list)
+    else:
+        raise Exception('clickhouse返回列表非有序')
+    # 元组数组通过numpy结构化,注意数据长度code:8字符 date:10字符.可能存在问题
+
+    return np.array(res_tuple_list,
+                    dtype=[('datetime', 'object'), ('code', 'U8'),
+                           ('date', 'U10'), ('limit', 'u8')])
 
 
 if __name__ == '__main__':

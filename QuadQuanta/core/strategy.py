@@ -13,7 +13,7 @@
 # here put the import lib
 from QuadQuanta.portfolio.account import Account
 import numpy as np
-from QuadQuanta.data.clickhouse_api import query_clickhouse
+from QuadQuanta.data.get_data import get_bars
 from tqdm import tqdm
 
 
@@ -38,7 +38,7 @@ class BaseStrategy():
         self.end_date = end_date
         self.frequency = frequency
         # 初始化时加载日线数据
-        self.day_data = query_clickhouse(code, start_date, end_date, 'day')
+        self.day_data = get_bars(code, start_date, end_date, 'daily')
         self.subscribe_code = np.unique(self.day_data['code']).tolist()
         self.trading_date = np.sort(np.unique(self.day_data['date']))
         self.trading_datetime = np.sort(np.unique(self.day_data['datetime']))
@@ -81,7 +81,7 @@ class BaseStrategy():
 
 
 if __name__ == '__main__':
-    strategy = BaseStrategy(start_date='2014-01-01',
+    strategy = BaseStrategy(code='000001',start_date='2014-01-01',
                             end_date='2014-01-10',
-                            frequency='min')
+                            frequency='day')
     strategy.syn_backtest()

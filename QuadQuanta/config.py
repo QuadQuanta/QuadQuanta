@@ -50,6 +50,14 @@ class Config():
         return self.get_clickhouse_ip()
 
     @property
+    def clickhouse_user(self):
+        return self.get_clickhouse_user()
+
+    @property
+    def clickhouse_password(self):
+        return self.get_clickhouse_password()
+
+    @property
     def start_date(self):
         return self.get_start_date()
 
@@ -63,7 +71,15 @@ class Config():
 
     def get_clickhouse_ip(self):
         yaml_data = self.load_config_yaml()
-        return yaml_data['clickhouse_IP']
+        return yaml_data['clickhouse']['ip']
+
+    def get_clickhouse_user(self):
+        yaml_data = self.load_config_yaml()
+        return yaml_data['clickhouse']['user']
+
+    def get_clickhouse_password(self):
+        yaml_data = self.load_config_yaml()
+        return yaml_data['clickhouse']['password']
 
     def get_start_date(self):
         yaml_data = self.load_config_yaml()

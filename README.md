@@ -20,7 +20,7 @@
 
 ### 安装clickhouse
 
-参考clickhouse官网，暂时未设置用户名，密码认证
+参考clickhouse官网，用户名，密码可自行设置
 
 ### 安装QuadQuanta
 
@@ -55,7 +55,7 @@ python -m pip install -e .
 #### 下载源码
 
 ```
-git clone https://github.com/levonwoo/QuadQuanta.git
+git clone https://github.com/QuadQuanta/QuadQuanta.git
 ```
 
 #### 更新数据
@@ -71,8 +71,12 @@ start_date: '2014-01-01'
 jqdata:
   username: 'yourusername' 
   passwd: 'yourpasswd'
-# clickhouse服务端地址
-clickhouse_IP: '127.0.0.1'
+# clickhouse配置
+clickhouse:
+  ip: '127.0.0.1'
+  user: 'default'
+  password: 'yourpasswrod' #无密码则为''
+
 ```
 
 修改`config.yaml`文件`start_date`项可修改开始时间，参考聚宽数据源的最早数据时间
@@ -80,6 +84,8 @@ clickhouse_IP: '127.0.0.1'
 #### 示例
 
 `./QuadQuanta/examples/stock_picking.py`文件为一个简易的选股示例
+
+`./QuadQuanta/examples/DoubleMA.py`是一个简单的双均线策略示例
 
 ### 数据字段
 
