@@ -23,6 +23,8 @@ from QuadQuanta.utils.datetime_func import (datetime_convert_stamp,
                                             is_valid_date)
 from QuadQuanta.utils.logs import logger
 
+jq.auth(config.jqusername, config.jqpasswd)
+
 
 def get_bars(code=None,
              start_time='1970-01-01',

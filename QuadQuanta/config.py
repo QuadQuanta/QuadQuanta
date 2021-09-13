@@ -14,8 +14,6 @@
 
 import os
 import sys
-
-import jqdatasdk as jq
 import yaml
 
 from QuadQuanta.utils.logs import logger
@@ -89,7 +87,6 @@ class Config():
 config = Config()
 # TODO 判断yaml中数据合法性
 
-jq.auth(config.jqusername, config.jqpasswd)
 if __name__ == '__main__':
     # config = Config()
     print(config.jqusername)
