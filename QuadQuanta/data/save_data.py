@@ -28,7 +28,8 @@ from QuadQuanta.utils.datetime_func import is_valid_date
 from QuadQuanta.utils.logs import logger
 from tqdm import tqdm
 
-# here put the import lib
+
+jq.auth(config.jqusername, config.jqpasswd)
 
 
 def save_bars(start_time=config.start_date,
