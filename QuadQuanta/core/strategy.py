@@ -39,7 +39,10 @@ class BaseStrategy():
         self.frequency = frequency
         # 初始化时加载日线数据
         self.day_data = get_bars(code, start_date, end_date, 'daily')
-        self.subscribe_code = np.unique(self.day_data['code']).tolist()
+        if code:
+            self.subscribe_code = code
+        else:
+            self.subscribe_code = np.unique(self.day_data['code']).tolist()
         self.trading_date = np.sort(np.unique(self.day_data['date']))
         self.trading_datetime = np.sort(np.unique(self.day_data['datetime']))
         self.init()

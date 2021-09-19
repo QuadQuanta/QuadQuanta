@@ -23,7 +23,7 @@ from QuadQuanta.utils.datetime_func import (datetime_convert_stamp,
                                             is_valid_date)
 from QuadQuanta.utils.logs import logger
 
-jq.auth(config.jqusername, config.jqpasswd)
+
 
 
 def get_bars(code=None,
@@ -112,6 +112,7 @@ def get_jq_bars(code=None,
     Exception
         [description]
     """
+    jq.auth(config.jqusername, config.jqpasswd)
 
     if isinstance(code, str):
         code = list(map(str.strip, code.split(',')))
@@ -323,6 +324,7 @@ def get_jq_trade_days(start_time=None, end_time=None, **kwargs):
     DataFrame
         可通过format参数指定输出格式, 默认pandas.DataFrame
     """
+    jq.auth(config.jqusername, config.jqpasswd)
 
     if (start_time and is_valid_date(start_time)) and (end_time and
                                                        is_valid_date(end_time)):
@@ -404,6 +406,8 @@ def get_adjust_factor(code,
     NotImplementedError
         [description]
     """
+    jq.auth(config.jqusername, config.jqpasswd)
+
     if isinstance(code, str):
         code = list(map(str.strip, code.split(',')))
     if len(code) == 0:
