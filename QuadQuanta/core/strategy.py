@@ -10,10 +10,10 @@
 @Desc    :   None
 '''
 
-# here put the import lib
-from QuadQuanta.portfolio.account import Account
 import numpy as np
 from QuadQuanta.data.get_data import get_bars
+from QuadQuanta.portfolio.account import Account
+from QuadQuanta.utils.logs import logger
 from tqdm import tqdm
 
 
@@ -38,7 +38,9 @@ class BaseStrategy():
         self.end_date = end_date
         self.frequency = frequency
         # 初始化时加载日线数据
+        logger.info("加载数据中...")
         self.day_data = get_bars(code, start_date, end_date, 'daily')
+        logger.info("数据加载完成")
         if code:
             self.subscribe_code = code
         else:
@@ -84,7 +86,8 @@ class BaseStrategy():
 
 
 if __name__ == '__main__':
-    strategy = BaseStrategy(code='000001',start_date='2014-01-01',
+    strategy = BaseStrategy(code='000001',
+                            start_date='2014-01-01',
                             end_date='2014-01-10',
                             frequency='day')
     strategy.syn_backtest()

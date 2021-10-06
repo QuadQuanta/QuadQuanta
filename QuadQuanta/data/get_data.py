@@ -12,18 +12,15 @@
 
 # here put the import lib
 from QuadQuanta import config
-import time
+from dateutil.parser import parse
 
 import jqdatasdk as jq
 import pandas as pd
 from QuadQuanta.const import *
 from QuadQuanta.data.clickhouse_api import query_clickhouse, query_N_clickhouse
 from QuadQuanta.data.data_trans import pd_to_tuplelist, tuplelist_to_np
-from QuadQuanta.utils.datetime_func import (datetime_convert_stamp,
-                                            is_valid_date)
+from QuadQuanta.utils.datetime_func import (datetime_convert_stamp)
 from QuadQuanta.utils.logs import logger
-
-
 
 
 def get_bars(code=None,
@@ -118,15 +115,27 @@ def get_jq_bars(code=None,
         code = list(map(str.strip, code.split(',')))
     if len(code) == 0:
         raise ValueError('股票代码格式错误')
-    if is_valid_date(start_time) and is_valid_date(end_time):
-        try:
-            time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            start_time = start_time + ' 09:00:00'
-        try:
-            time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            end_time = end_time + ' 17:00:00'
+
+    # 解析日期是否合法，非法则使用默认日期
+    try:
+        start_time = str(parse(start_time))
+    except Exception as e:
+        logger.error(e)
+        logger.info("非法的开始日期，使用2005-01-01作为开始日期")
+        start_time = '2005-01-01'
+
+    try:
+        end_time = str(parse(end_time))
+    except Exception as e:
+        logger.error(e)
+        logger.info("非法的结束日期，使用2100-01-01作为结束日期")
+        end_time = '2100-01-01'
+
+    if start_time < start_time[:10] + ' 09:00:00':
+        start_time = start_time[:10] + ' 09:00:00'
+
+    if end_time < end_time[:10] + ' 09:00:00':
+        end_time = end_time[:10] + ' 17:00:00'
 
     columns = [
         'time', 'code', 'open', 'close', 'high', 'low', 'volume', 'money',
@@ -325,12 +334,19 @@ def get_jq_trade_days(start_time=None, end_time=None, **kwargs):
         可通过format参数指定输出格式, 默认pandas.DataFrame
     """
     jq.auth(config.jqusername, config.jqpasswd)
-
-    if (start_time and is_valid_date(start_time)) and (end_time and
-                                                       is_valid_date(end_time)):
-        trade_days = jq.get_trade_days(start_time, end_time)
-    else:
-        trade_days = jq.get_all_trade_days()
+    try:
+        start_time = str(parse(start_time))
+    except Exception as e:
+        logger.error(e)
+        logger.info("非法的开始日期，获取2005-01-01作为开始日期")
+        start_time = '2005-01-01'
+    try:
+        end_time = str(parse(end_time))
+    except Exception as e:
+        logger.error(e)
+        logger.info("非法的结束日期，使用2100-01-01作为结束日期")
+        end_time = '2100-01-01'
+    trade_days = jq.get_trade_days(start_time, end_time)
 
     pd_data = pd.DataFrame(trade_days, columns=['datetime'])
     return pd_data.assign(date=pd_data['datetime'].apply(lambda x: str(x)))
@@ -431,10 +447,10 @@ if __name__ == '__main__':
     #              'daily',
     #              DataSource.CLICKHOUSE,
     #              format='pd'))
-    # print(get_jq_trade_days(None, '2020-01-01'))
+    print(get_jq_trade_days(None, '2020-01-02'))
     # print(get_trade_days('2020-01-01 09:00:00', '2020-02-03 17:00:00'))
-    print(
-        get_adjust_factor(['000001'],
-                          '2020-01-01',
-                          '2020-02-01',
-                          adj_type='pre'))
+    # print(
+    #     get_adjust_factor(['000001'],
+    #                       '2020-01-01',
+    #                       '2020-02-01',
+    #                       adj_type='pre'))
