@@ -39,9 +39,12 @@ class Position():
         self.frozen_cash = 0
         self.last_price = 0  # 持仓最新价格
         # 开仓总成本
-        self.open_cost = 0
+        self.open_cost = position_cost
 
         self.datetime = ""
+
+        # 持仓天数
+        self.hold_days = 0
 
     def __repr__(self) -> str:
         return 'Positon: {} volume: {} avaliable:{} cost_price:{} mark_value:{} float_profit:{}'.format(
@@ -115,6 +118,11 @@ class Position():
         self.volume_short_history += self.volume_short_today
         self.volume_long_today = 0
         self.volume_short_today = 0
+        # 持仓天数
+        if self.volume_long > 0:
+            self.hold_days += 1
+        else:
+            self.hold_days = 0
 
     def update_pos(self, price, update_time):
         """

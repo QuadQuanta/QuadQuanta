@@ -113,7 +113,7 @@ def pd_to_tuplelist(pd_data, frequency):
             map(
                 lambda x: datetime.datetime.utcfromtimestamp(
                     x.astype(datetime.datetime) / pow(10, 9)) + datetime.
-                timedelta(hours=15), pd_data.index.values))
+                              timedelta(hours=15), pd_data.index.values))
     elif frequency in ['auction', 'call_auction']:
         rawdata['datetime'] = list(
             map(

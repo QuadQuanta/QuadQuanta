@@ -16,10 +16,11 @@ from itertools import chain
 # here put the import lib
 import numpy as np
 from clickhouse_driver import Client
+from dateutil.parser import parse
 from QuadQuanta.config import config
 from QuadQuanta.data.data_trans import tuplelist_to_np
 from QuadQuanta.utils.common import is_sorted, removeDuplicates
-from QuadQuanta.utils.datetime_func import is_valid_date
+from QuadQuanta.utils.logs import logger
 
 
 def create_clickhouse_database(database: str,
@@ -230,12 +231,20 @@ def query_exist_date(code=None,
     else:
         raise NotImplementedError
 
-    if is_valid_date(start_time) and is_valid_date(end_time):
-        try:
-            time.strptime(start_time, "%Y-%m-%d")
-        except ValueError:
-            start_time = start_time[:10]
-            end_time = end_time[:10]
+    try:
+        start_time = str(parse(start_time))[:10]
+    except Exception as e:
+        logger.error(e)
+        logger.info("非法的开始日期，使用2005-01-01作为开始日期")
+        start_time = '2005-01-01'
+
+    try:
+        end_time = str(parse(end_time))[:10]
+    except Exception as e:
+        logger.error(e)
+        logger.info("非法的结束日期，使用2100-01-01作为结束日期")
+        end_time = '2100-01-01'
+
     #  判断日期合法
     if start_time > end_time:
         raise ValueError('开始时间大于结束时间')
@@ -305,20 +314,32 @@ def query_clickhouse(code: list = None,
     else:
         raise NotImplementedError
 
-    if is_valid_date(start_time) and is_valid_date(end_time):
-        if table_name == 'trade_days':
-            try:
-                time.strptime(start_time, "%Y-%m-%d")
-            except ValueError:
-                start_time = start_time[:10]
-                end_time = end_time[:10]
-        else:
-            try:
-                time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-            except ValueError:
-                start_time = start_time + ' 09:00:00'
-                end_time = end_time + ' 17:00:00'
-    #  判断日期合法
+    # 解析日期是否合法，非法则使用默认日期
+    try:
+        start_time = str(parse(start_time))
+    except Exception as e:
+        logger.error(e)
+        logger.info("非法的开始日期，使用2005-01-01作为开始日期")
+        start_time = '2005-01-01'
+
+    try:
+        end_time = str(parse(end_time))
+    except Exception as e:
+        logger.error(e)
+        logger.info("非法的结束日期，使用2100-01-01作为结束日期")
+        end_time = '2100-01-01'
+
+    if table_name == 'trade_days':
+        start_time = start_time[:10]
+        end_time = end_time[:10]
+    else:
+        if start_time < start_time[:10] + ' 09:00:00':
+            start_time = start_time[:10] + ' 09:00:00'
+
+        if end_time < end_time[:10] + ' 09:00:00':
+            end_time = end_time[:10] + ' 17:00:00'
+
+    #  判断起始日期合法
     if start_time > end_time:
         raise ValueError('开始时间大于结束时间')
 
@@ -409,18 +430,19 @@ def query_N_clickhouse(count: int,
         table_name = 'trade_days'
     else:
         raise NotImplementedError
-    if is_valid_date(end_time):
-        if table_name == 'trade_days':
-            try:
-                time.strptime(end_time, "%Y-%m-%d")
-            except ValueError:
-                end_time = end_time[:10]
-        else:
-            try:
-                time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
-            except ValueError:
-                if table_name != 'trade_days':
-                    end_time = end_time + ' 17:00:00'
+
+    try:
+        end_time = str(parse(end_time))
+    except Exception as e:
+        logger.error(e)
+        logger.info("非法的结束日期，使用2100-01-01作为结束日期")
+        end_time = '2100-01-01'
+
+    if table_name == 'trade_days':
+        end_time = end_time[:10]
+    else:
+        if end_time < end_time[:10] + ' 09:00:00':
+            end_time = end_time[:10] + ' 17:00:00'
 
     client = Client(host=config.clickhouse_IP,
                     user=config.clickhouse_user,
@@ -468,12 +490,12 @@ def query_limit_count(code: list = None,
                       end_time: str = '2200-01-01',
                       table_name='stock_day_limit',
                       database='jqdata_test') -> np.ndarray:
-    if is_valid_date(start_time) and is_valid_date(end_time):
-        try:
-            time.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            start_time = start_time + ' 09:00:00'
-            end_time = end_time + ' 17:00:00'
+    # TODO 日期解析
+    try:
+        start_time = str(parse(start_time))
+        end_time = str(parse(end_time))
+    except Exception as e:
+        logger.error(e)
     #  判断日期合法
     if start_time > end_time:
         raise ValueError('开始时间大于结束时间')
@@ -520,16 +542,18 @@ def query_limit_count(code: list = None,
 
 
 if __name__ == '__main__':
-    client = Client(host=config.clickhouse_IP, database='jqdata')
+    client = Client(host=config.clickhouse_IP,
+                    user=config.clickhouse_user,
+                    password=config.clickhouse_password, database='jqdata')
     # print((query_exist_date(start_time='2020-01-01',
-    #                         end_time='2020-05-01',
+    #                         end_time='2020-05-11',
     #                         client=client)))
-    # print((query_N_clickhouse(2, '000001', end_time='2021-05-20')))
+    print((query_N_clickhouse(2, '000001', end_time='2021-05-20')))
     # print(query_exist_max_datetime(code=['000001'], type='daily',
     #                                client=client))
     # create_clickhouse_table('trade_days', client)
-    print((query_clickhouse(start_time='2014-05-20',
-                            end_time='2014-05-20',
-                            frequency='minute',
-                            database='jqdata')))
+    # print((query_clickhouse(start_time='2014-05-20 09',
+    #                         end_time='2014-05-20 10',
+    #                         frequency='minute',
+    #                         database='jqdata')))
     # insert_clickhouse()

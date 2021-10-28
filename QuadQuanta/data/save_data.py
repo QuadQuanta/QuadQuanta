@@ -12,7 +12,7 @@
 
 import datetime
 import time
-
+from dateutil.parser import parse
 import jqdatasdk as jq
 from clickhouse_driver import Client
 from QuadQuanta.config import config
@@ -24,10 +24,8 @@ from QuadQuanta.data.clickhouse_api import (create_clickhouse_database,
 from QuadQuanta.data.data_trans import pd_to_tuplelist
 from QuadQuanta.data.get_data import (get_jq_bars, get_jq_trade_days,
                                       get_trade_days)
-from QuadQuanta.utils.datetime_func import is_valid_date
 from QuadQuanta.utils.logs import logger
 from tqdm import tqdm
-
 
 jq.auth(config.jqusername, config.jqpasswd)
 
@@ -60,8 +58,29 @@ def save_bars(start_time=config.start_date,
     Exception
         [description]
     """
-    if is_valid_date(start_time) and is_valid_date(end_time):
-        pass
+    # 解析日期是否合法，非法则使用默认日期
+    try:
+        start_time = str(parse(start_time))
+    except Exception as e:
+        logger.error(e)
+        logger.info("非法的开始日期，使用2005-01-01作为开始日期")
+        start_time = '2005-01-01'
+
+    try:
+        end_time = str(parse(end_time))
+    except Exception as e:
+        logger.error(e)
+        logger.info("非法的结束日期，使用2100-01-01作为结束日期")
+        end_time = '2100-01-01'
+
+    if start_time < start_time[:10] + ' 09:00:00':
+        start_time = start_time[:10] + ' 09:00:00'
+
+    if end_time < end_time[:10] + ' 09:00:00':
+        end_time = end_time[:10] + ' 17:00:00'
+
+    if start_time > end_time:
+        raise Exception('开始日期大于结束日期')
 
     # 强制转换start_time, end_time时间改为9:00:00和17:00
     client = Client(host=config.clickhouse_IP,
@@ -90,10 +109,6 @@ def save_bars(start_time=config.start_date,
         time.strptime(end_time, "%Y-%m-%d %H:%M:%S")
     except ValueError:
         end_time = end_time + ' 17:00:00'
-
-    # if current_hour < 16 and str(today)[:10] <= end_time[:10]:
-    #     end_time = str(today - datetime.timedelta(1))[:10]
-    #     end_time = end_time[:10] + ' 17:00:00'
 
     # 表不存在则创建相应表
     create_clickhouse_table(frequency, client)
@@ -139,7 +154,7 @@ def save_bars(start_time=config.start_date,
                     # raise Exception('Insert acution error', str(date_range[i])[:10])
                     continue
     else:
-        raise Exception('日期段数据已保存或开始日期大于结束日期')
+        raise Exception('日期段数据已保存')
 
 
 def save_trade_days(database='jqdata'):
